@@ -7,16 +7,16 @@ import (
 	"github.com/mikhailpashkov/metrics/internal/repository"
 )
 
-type Metrics struct {
-	metricsStorage repository.MetricsStorage
+type MetricsService struct {
+	metricsRepository repository.MetricsRepository
 }
 
-func NewMetrics(metricsStorage repository.MetricsStorage) *Metrics {
-	return &Metrics{metricsStorage}
+func NewMetricsService(metricsStorage repository.MetricsRepository) *MetricsService {
+	return &MetricsService{metricsStorage}
 }
 
-func (metrics *Metrics) UpdateCounter(name string, delta int64) (*models.Metrics, error) {
-	return metrics.updateMetrics(&models.Metrics{
+func (ms *MetricsService) UpdateCounter(name string, delta int64) (*models.Metrics, error) {
+	return ms.updateMetrics(&models.Metrics{
 		ID:    -1,
 		Type:  models.Counter,
 		Name:  name,
@@ -25,8 +25,8 @@ func (metrics *Metrics) UpdateCounter(name string, delta int64) (*models.Metrics
 	})
 }
 
-func (metrics *Metrics) UpdateGauge(name string, value float64) (*models.Metrics, error) {
-	return metrics.updateMetrics(&models.Metrics{
+func (ms *MetricsService) UpdateGauge(name string, value float64) (*models.Metrics, error) {
+	return ms.updateMetrics(&models.Metrics{
 		ID:    -1,
 		Type:  models.Gauge,
 		Name:  name,
@@ -35,8 +35,12 @@ func (metrics *Metrics) UpdateGauge(name string, value float64) (*models.Metrics
 	})
 }
 
-func (metrics *Metrics) updateMetrics(metricsModel *models.Metrics) (*models.Metrics, error) {
-	savedMetrics, err := metrics.metricsStorage.Save(metricsModel)
+func (ms *MetricsService) GetAllRecords() ([]*models.Metrics, error) {
+	return ms.metricsRepository.FindAll()
+}
+
+func (ms *MetricsService) updateMetrics(metricsModel *models.Metrics) (*models.Metrics, error) {
+	savedMetrics, err := ms.metricsRepository.Save(metricsModel)
 	if err != nil {
 		return nil, err
 	}

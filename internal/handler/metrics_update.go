@@ -9,21 +9,21 @@ import (
 	"github.com/mikhailpashkov/metrics/internal/service"
 )
 
-type Metrics struct {
-	metricsService *service.Metrics
+type UpdateMetricsHandler struct {
+	metricsService *service.MetricsService
 }
 
-func NewMetrics(metricsService *service.Metrics) *Metrics {
-	return &Metrics{
+func NewUpdateMetricsHandler(metricsService *service.MetricsService) *UpdateMetricsHandler {
+	return &UpdateMetricsHandler{
 		metricsService: metricsService,
 	}
 }
 
-func (m *Metrics) GetUrlPattern() string {
+func (m *UpdateMetricsHandler) GetUrlPattern() string {
 	return "/update/{type}/{name}/{value}"
 }
 
-func (m *Metrics) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (m *UpdateMetricsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
 		return
@@ -62,6 +62,7 @@ func (m *Metrics) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	// fixme: copy paste...
 	if mType == models.Gauge {
 		parseFloat, err := strconv.ParseFloat(valueStr, 64)
 		if err != nil {

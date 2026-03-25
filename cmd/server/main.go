@@ -11,12 +11,18 @@ import (
 const Addr = ":8080"
 
 func main() {
-	metricsRepository := repository.NewMetricsMemoryStorage()
-	metricsService := service.NewMetrics(metricsRepository)
-	metricsHandler := handler.NewMetrics(metricsService)
+	metricsRepository := repository.NewMetricsMemoryRepository()
+	metricsService := service.NewMetricsService(metricsRepository)
+
+	handlers := []handler.MHandler{
+		handler.NewGetMetricsHandler(metricsService),
+		handler.NewUpdateMetricsHandler(metricsService),
+	}
 
 	mux := http.NewServeMux()
-	mux.Handle(metricsHandler.GetUrlPattern(), metricsHandler)
+	for _, h := range handlers {
+		mux.Handle(h.GetUrlPattern(), h)
+	}
 
 	err := http.ListenAndServe(Addr, mux)
 	if err != nil {
