@@ -4,17 +4,11 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/mikhailpashkov/metrics/internal/agent/poller"
+	"github.com/mikhailpashkov/metrics/internal/agent/reporter"
 	models "github.com/mikhailpashkov/metrics/internal/model"
 	"github.com/mikhailpashkov/metrics/internal/service"
 )
-
-type MetricsPoller interface {
-	GetMetrics() ([]*models.Metrics, error)
-}
-
-type MetricsReporter interface {
-	SendMetrics(metrics *models.Metrics) error
-}
 
 type MetricsCollectorParams struct {
 	PollInterval   time.Duration
@@ -24,15 +18,15 @@ type MetricsCollectorParams struct {
 
 type MetricsCollector struct {
 	service  *service.MetricsService
-	pollers  []MetricsPoller
-	reporter MetricsReporter
+	pollers  []poller.MetricsPoller
+	reporter reporter.MetricsReporter
 	params   *MetricsCollectorParams
 }
 
 func NewMetricsCollector(
 	service *service.MetricsService,
-	pollers []MetricsPoller,
-	reporter MetricsReporter,
+	pollers []poller.MetricsPoller,
+	reporter reporter.MetricsReporter,
 	params *MetricsCollectorParams,
 ) *MetricsCollector {
 	return &MetricsCollector{
@@ -52,8 +46,8 @@ func (m *MetricsCollector) Start() {
 		for {
 			time.Sleep(m.params.PollInterval)
 			go m.params.PollCallback()
-			for _, poller := range m.pollers {
-				metrics, err := poller.GetMetrics()
+			for _, metricsPoller := range m.pollers {
+				metrics, err := metricsPoller.GetMetrics()
 				if err != nil {
 					fmt.Println("[ERR] Error polling metrics", err)
 					continue
@@ -106,5 +100,6 @@ func (m *MetricsCollector) Start() {
 	}()
 
 	for {
+		time.Sleep(1 * time.Second)
 	}
 }

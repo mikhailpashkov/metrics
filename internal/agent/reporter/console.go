@@ -4,13 +4,12 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/mikhailpashkov/metrics/internal/agent"
 	models "github.com/mikhailpashkov/metrics/internal/model"
 )
 
 type ConsoleReporter struct{}
 
-func NewConsoleReporter() agent.MetricsReporter {
+func NewConsoleReporter() MetricsReporter {
 	return &ConsoleReporter{}
 }
 func (c ConsoleReporter) SendMetrics(metrics *models.Metrics) error {
