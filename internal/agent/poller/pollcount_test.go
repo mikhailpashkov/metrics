@@ -8,6 +8,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func ptrInt64(v int64) *int64 { return &v }
+
 func TestPollCountPoller_GetMetrics(t *testing.T) {
 	type fields struct {
 		count int64
@@ -31,7 +33,7 @@ func TestPollCountPoller_GetMetrics(t *testing.T) {
 			want: want{
 				mType: models.Counter,
 				mName: "custom.PollCount",
-				delta: func(val int64) *int64 { return &val }(0),
+				delta: ptrInt64(0),
 				value: nil,
 			},
 		},
@@ -43,7 +45,7 @@ func TestPollCountPoller_GetMetrics(t *testing.T) {
 			want: want{
 				mType: models.Counter,
 				mName: "custom.PollCount",
-				delta: func(val int64) *int64 { return &val }(0),
+				delta: ptrInt64(0),
 				value: nil,
 			},
 		},
@@ -93,7 +95,7 @@ func TestPollCountPoller_IncrementCount(t *testing.T) {
 				incTimes: 1,
 			},
 			want: want{
-				delta: func(val int64) *int64 { return &val }(1),
+				delta: ptrInt64(1),
 			},
 		},
 		{
@@ -103,7 +105,7 @@ func TestPollCountPoller_IncrementCount(t *testing.T) {
 				incTimes: 10,
 			},
 			want: want{
-				delta: func(val int64) *int64 { return &val }(10),
+				delta: ptrInt64(10),
 			},
 		},
 		{
@@ -113,7 +115,7 @@ func TestPollCountPoller_IncrementCount(t *testing.T) {
 				incTimes: 1,
 			},
 			want: want{
-				delta: func(val int64) *int64 { return &val }(11),
+				delta: ptrInt64(11),
 			},
 		},
 		{
@@ -123,7 +125,7 @@ func TestPollCountPoller_IncrementCount(t *testing.T) {
 				incTimes: 10,
 			},
 			want: want{
-				delta: func(val int64) *int64 { return &val }(20),
+				delta: ptrInt64(20),
 			},
 		},
 	}
@@ -164,7 +166,7 @@ func TestPollCountPoller_ResetCount(t *testing.T) {
 				count: 0,
 			},
 			want: want{
-				delta: func(val int64) *int64 { return &val }(0),
+				delta: ptrInt64(0),
 			},
 		},
 		{
@@ -173,7 +175,7 @@ func TestPollCountPoller_ResetCount(t *testing.T) {
 				count: 10,
 			},
 			want: want{
-				delta: func(val int64) *int64 { return &val }(0),
+				delta: ptrInt64(0),
 			},
 		},
 	}
