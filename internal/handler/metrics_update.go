@@ -60,6 +60,8 @@ func (m *UpdateMetricsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request)
 			http.Error(w, fmt.Sprintf("Value update error: %s", err), http.StatusInternalServerError)
 			return
 		}
+
+		fmt.Println("updated ", mType, name, parseInt)
 	}
 
 	// fixme: copy paste...
@@ -75,5 +77,7 @@ func (m *UpdateMetricsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request)
 			http.Error(w, fmt.Sprintf("Value update error: %s", err), http.StatusInternalServerError)
 			return
 		}
+
+		fmt.Println("updated ", mType, name, parseFloat)
 	}
 }

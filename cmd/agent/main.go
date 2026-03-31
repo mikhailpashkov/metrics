@@ -16,7 +16,9 @@ func main() {
 
 	metricsRepository := repository.NewMetricsMemoryRepository()
 	metricsService := service.NewMetricsService(metricsRepository)
-	consoleReporter := reporter.NewConsoleReporter()
+
+	//consoleReporter := reporter.NewConsoleReporter()
+	backendReporter := reporter.NewBackendReporter("localhost:8080")
 
 	memStatsPoller := poller.NewMemStatsPoller()
 	pollCountPoller := poller.NewPollCountPoller()
@@ -29,7 +31,7 @@ func main() {
 			pollCountPoller,
 			randomValuePoller,
 		},
-		consoleReporter,
+		backendReporter,
 		&agent.MetricsCollectorParams{
 			PollInterval:   1 * time.Second,
 			ReportInterval: 10 * time.Second,
