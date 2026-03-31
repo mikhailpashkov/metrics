@@ -24,7 +24,7 @@ func main() {
 
 	metricsCollector := agent.NewMetricsCollector(
 		metricsService,
-		[]agent.MetricsPoller{
+		[]poller.MetricsPoller{
 			memStatsPoller,
 			pollCountPoller,
 			randomValuePoller,
