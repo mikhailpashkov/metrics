@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/mikhailpashkov/metrics/internal/handler"
@@ -11,6 +12,7 @@ import (
 const Addr = ":8080"
 
 func main() {
+	fmt.Println("SERVER")
 	metricsRepository := repository.NewMetricsMemoryRepository()
 	metricsService := service.NewMetricsService(metricsRepository)
 

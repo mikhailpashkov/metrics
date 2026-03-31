@@ -14,6 +14,7 @@ type MetricsRepository interface {
 	FindByName(name string) ([]*models.Metrics, error)
 	FindAll() ([]*models.Metrics, error)
 	Save(*models.Metrics) (*models.Metrics, error)
+	DeleteAll() error
 }
 
 type MetricsMemoryRepository struct {
@@ -73,4 +74,12 @@ func (m *MetricsMemoryRepository) Save(metrics *models.Metrics) (*models.Metrics
 	}
 	m.storage[metrics.ID] = metrics
 	return metrics, nil
+}
+
+func (m *MetricsMemoryRepository) DeleteAll() error {
+	m.op.Lock()
+	defer m.op.Unlock()
+	m.storage = make(map[int64]*models.Metrics)
+	m.lastId = -1
+	return nil
 }
