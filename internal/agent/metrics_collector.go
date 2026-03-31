@@ -19,6 +19,7 @@ type MetricsReporter interface {
 type MetricsCollectorParams struct {
 	PollInterval   time.Duration
 	ReportInterval time.Duration
+	PollCallback   func()
 }
 
 type MetricsCollector struct {
@@ -50,6 +51,7 @@ func (m *MetricsCollector) Start() {
 	go func() {
 		for {
 			time.Sleep(m.params.PollInterval)
+			go m.params.PollCallback()
 			for _, poller := range m.pollers {
 				metrics, err := poller.GetMetrics()
 				if err != nil {

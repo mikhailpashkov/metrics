@@ -3,6 +3,8 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"math/rand/v2"
+	"sync"
 	"time"
 
 	"github.com/mikhailpashkov/metrics/internal/agent"
@@ -19,13 +21,22 @@ func main() {
 	metricsService := service.NewMetricsService(metricsRepository)
 	consoleReporter := NewConsoleReporter()
 
+	memStatsPoller := NewMemStatsPoller()
+	pollCountPoller := NewPollCountPoller()
+	randomValuePoller := NewRandomValuePoller()
+
 	metricsCollector := agent.NewMetricsCollector(
 		metricsService,
-		[]agent.MetricsPoller{MemStatsPoller{}},
+		[]agent.MetricsPoller{
+			memStatsPoller,
+			pollCountPoller,
+			randomValuePoller,
+		},
 		consoleReporter,
 		&agent.MetricsCollectorParams{
 			PollInterval:   1 * time.Second,
 			ReportInterval: 10 * time.Second,
+			PollCallback:   pollCountPoller.IncrementCount,
 		},
 	)
 
@@ -35,6 +46,9 @@ func main() {
 
 type MemStatsPoller struct{}
 
+func NewMemStatsPoller() *MemStatsPoller {
+	return &MemStatsPoller{}
+}
 func (m MemStatsPoller) GetMetrics() ([]*models.Metrics, error) {
 	ms := runtime.MemStats{}
 	runtime.ReadMemStats(&ms)
@@ -84,6 +98,57 @@ func (_ MemStatsPoller) metricsBuilderFloat64(name string, value float64) *model
 		Value: &value,
 		TS:    time.Now().UnixMilli(),
 	}
+}
+
+type PollCountPoller struct {
+	count int64
+	mux   sync.Mutex
+}
+
+func NewPollCountPoller() *PollCountPoller {
+	return &PollCountPoller{
+		count: 0,
+		mux:   sync.Mutex{},
+	}
+}
+
+func (p *PollCountPoller) GetMetrics() ([]*models.Metrics, error) {
+	p.mux.Lock()
+	defer p.mux.Unlock()
+	return []*models.Metrics{
+		{
+			ID:    -1,
+			Type:  models.Counter,
+			Name:  "custom.PollCount",
+			Delta: &p.count,
+			Value: nil,
+			TS:    time.Now().UnixMilli(),
+		},
+	}, nil
+}
+
+func (p *PollCountPoller) IncrementCount() {
+	p.mux.Lock()
+	defer p.mux.Unlock()
+	p.count++
+}
+
+type RandomValuePoller struct{}
+
+func NewRandomValuePoller() *RandomValuePoller { return &RandomValuePoller{} }
+
+func (p *RandomValuePoller) GetMetrics() ([]*models.Metrics, error) {
+	randomValue := rand.Float64()
+	return []*models.Metrics{
+		{
+			ID:    -1,
+			Type:  models.Gauge,
+			Name:  "custom.RandomValue",
+			Delta: nil,
+			Value: &randomValue,
+			TS:    time.Now().UnixMilli(),
+		},
+	}, nil
 }
 
 type ConsoleReporter struct{}
