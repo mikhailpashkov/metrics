@@ -39,3 +39,9 @@ func (p *PollCountPoller) IncrementCount() {
 	defer p.mux.Unlock()
 	p.count++
 }
+
+func (p *PollCountPoller) ResetCount() {
+	p.mux.Lock()
+	defer p.mux.Unlock()
+	p.count = 0
+}

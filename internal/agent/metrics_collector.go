@@ -14,6 +14,7 @@ type MetricsCollectorParams struct {
 	PollInterval   time.Duration
 	ReportInterval time.Duration
 	PollCallback   func()
+	ReportCallback func()
 }
 
 type MetricsCollector struct {
@@ -86,6 +87,7 @@ func (m *MetricsCollector) Start() {
 				fmt.Println("[ERR] Error deleting all metrics", err)
 				panic(err)
 			}
+			go m.params.ReportCallback()
 		}
 	}()
 

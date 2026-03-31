@@ -36,6 +36,7 @@ func main() {
 			PollInterval:   1 * time.Second,
 			ReportInterval: 10 * time.Second,
 			PollCallback:   pollCountPoller.IncrementCount,
+			ReportCallback: pollCountPoller.ResetCount,
 		},
 	)
 
