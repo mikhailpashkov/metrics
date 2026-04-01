@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/go-chi/chi/v5"
 	"github.com/mikhailpashkov/metrics/internal/handler"
 	"github.com/mikhailpashkov/metrics/internal/repository"
 	"github.com/mikhailpashkov/metrics/internal/service"
@@ -21,12 +22,12 @@ func main() {
 		handler.NewUpdateMetricsHandler(metricsService),
 	}
 
-	mux := http.NewServeMux()
+	r := chi.NewRouter()
 	for _, h := range handlers {
-		mux.Handle(h.GetUrlPattern(), h)
+		r.Handle(h.GetUrlPattern(), h)
 	}
 
-	err := http.ListenAndServe(Addr, mux)
+	err := http.ListenAndServe(Addr, r)
 	if err != nil {
 		panic(err)
 	}
