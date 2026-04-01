@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"net/http"
 
@@ -10,10 +11,12 @@ import (
 	"github.com/mikhailpashkov/metrics/internal/service"
 )
 
-const Addr = ":8080"
-
 func main() {
-	fmt.Println("SERVER")
+	addr := flag.String("a", "localhost:8080", "HTTP server address")
+	flag.Parse()
+
+	fmt.Println("SERVER", *addr)
+
 	metricsRepository := repository.NewMetricsMemoryRepository()
 	metricsService := service.NewMetricsService(metricsRepository)
 
@@ -28,7 +31,7 @@ func main() {
 		r.Handle(h.GetUrlPattern(), h)
 	}
 
-	err := http.ListenAndServe(Addr, r)
+	err := http.ListenAndServe(*addr, r)
 	if err != nil {
 		panic(err)
 	}
