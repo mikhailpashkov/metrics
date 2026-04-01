@@ -18,14 +18,14 @@ type MetricsCollectorParams struct {
 }
 
 type MetricsCollector struct {
-	service  *service.MetricsService
+	service  service.MetricsService
 	pollers  []poller.MetricsPoller
 	reporter reporter.MetricsReporter
 	params   *MetricsCollectorParams
 }
 
 func NewMetricsCollector(
-	service *service.MetricsService,
+	service service.MetricsService,
 	pollers []poller.MetricsPoller,
 	reporter reporter.MetricsReporter,
 	params *MetricsCollectorParams,

@@ -10,10 +10,10 @@ import (
 )
 
 type UpdateMetricsHandler struct {
-	metricsService *service.MetricsService
+	metricsService service.MetricsService
 }
 
-func NewUpdateMetricsHandler(metricsService *service.MetricsService) *UpdateMetricsHandler {
+func NewUpdateMetricsHandler(metricsService service.MetricsService) *UpdateMetricsHandler {
 	return &UpdateMetricsHandler{
 		metricsService: metricsService,
 	}
