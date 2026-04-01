@@ -8,21 +8,21 @@ import (
 	"github.com/mikhailpashkov/metrics/internal/service"
 )
 
-type GetMetricsHandler struct {
+type GetListMetricsHandler struct {
 	metricsService service.MetricsService
 }
 
-func NewGetMetricsHandler(metricsService service.MetricsService) *GetMetricsHandler {
-	return &GetMetricsHandler{
+func NewGetListMetricsHandler(metricsService service.MetricsService) *GetListMetricsHandler {
+	return &GetListMetricsHandler{
 		metricsService: metricsService,
 	}
 }
 
-func (m *GetMetricsHandler) GetUrlPattern() string {
+func (m *GetListMetricsHandler) GetUrlPattern() string {
 	return "/metrics"
 }
 
-func (m *GetMetricsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (m *GetListMetricsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
 		return
