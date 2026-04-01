@@ -18,6 +18,7 @@ func main() {
 	metricsService := service.NewMetricsService(metricsRepository)
 
 	handlers := []handler.MHandler{
+		handler.NewGetMetricsHandler(metricsService),
 		handler.NewGetListMetricsHandler(metricsService),
 		handler.NewUpdateMetricsHandler(metricsService),
 	}
