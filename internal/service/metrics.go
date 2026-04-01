@@ -106,7 +106,7 @@ func (ms *MetricsServiceImpl) GetAllAccumulated() ([]*models.Metrics, error) {
 
 		if recordsType == models.Gauge {
 			sort.Slice(groupedRecords, func(i, j int) bool {
-				return groupedRecords[i].TS > groupedRecords[j].TS
+				return groupedRecords[i].TS < groupedRecords[j].TS
 			})
 			lastRecordByTS := groupedRecords[len(groupedRecords)-1]
 
