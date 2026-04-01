@@ -28,13 +28,13 @@ func (m *GetListMetricsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	allRecords, err := m.metricsService.GetAllRecords()
+	accumulated, err := m.metricsService.GetAllAccumulated()
 	if err != nil {
-		http.Error(w, fmt.Sprintf("GetAllRecords error: %s", err), http.StatusInternalServerError)
+		http.Error(w, fmt.Sprintf("GetAllAccumulated error: %s", err), http.StatusInternalServerError)
 		return
 	}
 
-	bytes, err := json.Marshal(allRecords)
+	bytes, err := json.Marshal(accumulated)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("json.Marshal error: %s", err), http.StatusInternalServerError)
 	}
