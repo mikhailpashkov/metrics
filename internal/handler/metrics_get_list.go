@@ -1,9 +1,10 @@
 package handler
 
 import (
-	"encoding/json"
 	"fmt"
+	"html/template"
 	"net/http"
+	"sort"
 
 	"github.com/mikhailpashkov/metrics/internal/service"
 )
@@ -12,6 +13,39 @@ type GetListMetricsHandler struct {
 	metricsService service.MetricsService
 }
 
+const htmlTemplate = `<html>
+<head>
+  <meta charset="utf-8">
+  <title>All Metrics</title>
+</head>
+<body>
+  <h1>All Metrics</h1>
+<table>
+<thead>
+<tr>
+<td>Type</td>
+<td>Name</td>
+<td>Value</td>
+</tr>
+</thead>
+<tbody>
+  {{range $key, $value := .}}
+	<tr>
+<td>{{$value.Type}}</td>
+<td>{{$value.Name}}</td>
+{{ if eq $value.Type "gauge" }}
+<td>{{$value.Value}}</td>
+{{ else if eq $value.Type "counter" }}
+<td>{{$value.Delta}}</td>
+{{ end }}
+</tr>
+  {{end}}
+</tbody>
+</table>
+</body>
+</html>
+`
+
 func NewGetListMetricsHandler(metricsService service.MetricsService) *GetListMetricsHandler {
 	return &GetListMetricsHandler{
 		metricsService: metricsService,
@@ -19,7 +53,7 @@ func NewGetListMetricsHandler(metricsService service.MetricsService) *GetListMet
 }
 
 func (m *GetListMetricsHandler) GetUrlPattern() string {
-	return "/metrics"
+	return "/"
 }
 
 func (m *GetListMetricsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -33,12 +67,20 @@ func (m *GetListMetricsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request
 		http.Error(w, fmt.Sprintf("GetAllAccumulated error: %s", err), http.StatusInternalServerError)
 		return
 	}
+	sort.Slice(accumulated, func(i, j int) bool {
+		return accumulated[i].Name < accumulated[j].Name
+	})
 
-	bytes, err := json.Marshal(accumulated)
+	w.Header().Set("Content-Type", "text/html")
+
+	tmpl, err := template.New("metrics").Parse(htmlTemplate)
 	if err != nil {
-		http.Error(w, fmt.Sprintf("json.Marshal error: %s", err), http.StatusInternalServerError)
+		http.Error(w, fmt.Sprintf("template parse error: %s", err), http.StatusInternalServerError)
+		return
 	}
-
-	w.Header().Set("Content-Type", "application/json")
-	_, _ = w.Write(bytes)
+	err = tmpl.Execute(w, accumulated)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("template execute error: %s", err), http.StatusInternalServerError)
+		return
+	}
 }
