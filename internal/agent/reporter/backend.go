@@ -75,7 +75,7 @@ func (r *BackendReporter) SendMetrics(metrics *models.Metrics) error {
 		if err != nil {
 			return fmt.Errorf("read response body error: %w", err)
 		}
-		return fmt.Errorf("update metrics failed: unexpected status %d: %s", resp.StatusCode, string(body))
+		return fmt.Errorf("update metrics failed: unexpected status %d: %s", resp.StatusCode(), string(body))
 	}
 
 	fmt.Println("BackendReporter - sent update for", metrics.Type, metrics.Name, metricsValue)
