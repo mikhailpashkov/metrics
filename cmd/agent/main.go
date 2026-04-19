@@ -10,14 +10,15 @@ import (
 	"github.com/mikhailpashkov/metrics/internal/agent/reporter"
 	"github.com/mikhailpashkov/metrics/internal/repository"
 	"github.com/mikhailpashkov/metrics/internal/service"
+	"github.com/mikhailpashkov/metrics/internal/utils"
 )
 
 func main() {
 	fmt.Println("AGENT")
 
-	addr := flag.String("a", "localhost:8080", "backend server address")
-	pollInterval := flag.Int("p", 2, "poll interval in seconds")
-	reportInterval := flag.Int("r", 10, "report interval in seconds")
+	addr := utils.GetStringParam("ADDRESS", "a", "backend server address", "localhost:8080")
+	pollInterval := utils.GetIntParam("POLL_INTERVAL", "p", "poll interval in seconds", 2)
+	reportInterval := utils.GetIntParam("REPORT_INTERVAL", "r", "report interval in seconds", 10)
 
 	flag.Parse()
 
