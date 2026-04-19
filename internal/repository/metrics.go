@@ -18,32 +18,36 @@ type MetricsRepository interface {
 }
 
 type MetricsMemoryRepository struct {
-	storage map[int64]*models.Metrics
-	lastId  int64
-	op      sync.Mutex
+	storage         map[int64]*models.Metrics
+	lastId          int64
+	mu              sync.RWMutex
+	errNotFound     error
+	errMetricsIsNil error
 }
 
 func NewMetricsMemoryRepository() MetricsRepository {
 	return &MetricsMemoryRepository{
-		storage: make(map[int64]*models.Metrics),
-		lastId:  -1,
+		storage:         make(map[int64]*models.Metrics),
+		lastId:          -1,
+		errNotFound:     errors.New("not found"),
+		errMetricsIsNil: errors.New("metrics is nil"),
 	}
 }
 
 func (m *MetricsMemoryRepository) FindById(id int64) (*models.Metrics, error) {
-	m.op.Lock()
-	defer m.op.Unlock()
+	m.mu.Lock()
+	defer m.mu.Unlock()
 
 	metrics, ok := m.storage[id]
 	if !ok {
-		return nil, errors.New("not found")
+		return nil, m.errNotFound
 	}
 	return metrics, nil
 }
 
 func (m *MetricsMemoryRepository) FindByName(name string) ([]*models.Metrics, error) {
-	m.op.Lock()
-	defer m.op.Unlock()
+	m.mu.Lock()
+	defer m.mu.Unlock()
 
 	metrics := make([]*models.Metrics, 0)
 	for _, metric := range m.storage {
@@ -55,18 +59,18 @@ func (m *MetricsMemoryRepository) FindByName(name string) ([]*models.Metrics, er
 }
 
 func (m *MetricsMemoryRepository) FindAll() ([]*models.Metrics, error) {
-	m.op.Lock()
-	defer m.op.Unlock()
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	return slices.Collect(maps.Values(m.storage)), nil
 }
 
 func (m *MetricsMemoryRepository) Save(metrics *models.Metrics) (*models.Metrics, error) {
 	if metrics == nil {
-		return nil, errors.New("metrics is nil")
+		return nil, m.errMetricsIsNil
 	}
 
-	m.op.Lock()
-	defer m.op.Unlock()
+	m.mu.Lock()
+	defer m.mu.Unlock()
 
 	if metrics.ID == -1 {
 		m.lastId++
@@ -77,8 +81,8 @@ func (m *MetricsMemoryRepository) Save(metrics *models.Metrics) (*models.Metrics
 }
 
 func (m *MetricsMemoryRepository) DeleteAll() error {
-	m.op.Lock()
-	defer m.op.Unlock()
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	m.storage = make(map[int64]*models.Metrics)
 	m.lastId = -1
 	return nil

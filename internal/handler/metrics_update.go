@@ -48,7 +48,8 @@ func (m *UpdateMetricsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	if mType == models.Counter {
+	switch mType {
+	case models.Counter:
 		parseInt, err := strconv.ParseInt(valueStr, 10, 64)
 		if err != nil {
 			http.Error(w, fmt.Sprintf("Value conversion error: %s", err), http.StatusBadRequest)
@@ -62,10 +63,7 @@ func (m *UpdateMetricsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request)
 		}
 
 		fmt.Println("updated ", mType, name, parseInt)
-	}
-
-	// fixme: copy paste...
-	if mType == models.Gauge {
+	case models.Gauge:
 		parseFloat, err := strconv.ParseFloat(valueStr, 64)
 		if err != nil {
 			http.Error(w, fmt.Sprintf("Value conversion error: %s", err), http.StatusBadRequest)
