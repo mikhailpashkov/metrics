@@ -6,17 +6,22 @@ import (
 
 	models "github.com/mikhailpashkov/metrics/internal/model"
 	"github.com/mikhailpashkov/metrics/internal/service"
+	"go.uber.org/zap"
 )
 
 type GetMetricsHandler struct {
+	logger         *zap.Logger
 	metricsService service.MetricsService
 }
 
-func NewGetMetricsHandler(metricsService service.MetricsService) *GetMetricsHandler {
+func NewGetMetricsHandler(logger *zap.Logger, metricsService service.MetricsService) *GetMetricsHandler {
 	return &GetMetricsHandler{
+		logger:         logger,
 		metricsService: metricsService,
 	}
 }
+
+func (m *GetMetricsHandler) GetLogger() *zap.Logger { return m.logger }
 
 func (m *GetMetricsHandler) GetUrlPattern() string {
 	return "/value/{type}/{name}"

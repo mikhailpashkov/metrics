@@ -11,12 +11,13 @@ import (
 	"github.com/mikhailpashkov/metrics/internal/repository"
 	"github.com/mikhailpashkov/metrics/internal/service"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/zap"
 )
 
 func TestUpdateMetricsHandler_ServeHTTP(t *testing.T) {
 	repo := repository.NewMetricsMemoryRepository()
 	svc := service.NewMetricsService(repo)
-	handler := NewUpdateMetricsHandler(svc)
+	handler := NewUpdateMetricsHandler(&zap.Logger{}, svc)
 
 	mux := http.NewServeMux()
 	mux.Handle("/update/{type}/{name}/{value}", handler)
