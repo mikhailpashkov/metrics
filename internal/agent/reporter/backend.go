@@ -9,17 +9,17 @@ import (
 	"time"
 
 	models "github.com/mikhailpashkov/metrics/internal/model"
+	"resty.dev/v3"
 )
 
 type BackendReporter struct {
 	address string
-	client  *http.Client
+	client  *resty.Client
 }
 
 func NewBackendReporter(address string) *BackendReporter {
-	client := &http.Client{
-		Timeout: 5 * time.Second,
-	}
+	client := resty.New()
+	client.SetTimeout(5 * time.Second)
 	return &BackendReporter{
 		address: address,
 		client:  client,
@@ -55,18 +55,22 @@ func (r *BackendReporter) SendMetrics(metrics *models.Metrics) error {
 		url.PathEscape(metricsValue),
 	)
 
-	request, err := http.NewRequest(http.MethodPost, updateUrl, nil)
-	if err != nil {
-		return fmt.Errorf("error creating request: %w", err)
-	}
-	request.Header.Set("Content-Type", "text/plain")
+	request := r.client.R().
+		SetHeader("Content-Type", "text/plain").
+		SetRetryCount(3).
+		SetRetryWaitTime(1 * time.Second).
+		SetRetryMaxWaitTime(5 * time.Second).
+		AddRetryConditions(func(r *resty.Response, err error) bool {
+			return err != nil || r.StatusCode() >= 500
+		})
 
-	resp, err := r.client.Do(request)
+	resp, err := request.Post(updateUrl)
 	if err != nil {
 		return fmt.Errorf("update metrics failed: %w", err)
 	}
+
 	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
+	if resp.StatusCode() != http.StatusOK {
 		body, err := io.ReadAll(resp.Body)
 		if err != nil {
 			return fmt.Errorf("read response body error: %w", err)
