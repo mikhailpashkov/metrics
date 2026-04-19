@@ -1,6 +1,7 @@
 package agent
 
 import (
+	"context"
 	"fmt"
 	"time"
 
@@ -63,7 +64,7 @@ func (m *MetricsCollector) Start() {
 	// local save
 	go func() {
 		for metric := range metricsToSave {
-			_, err := m.service.UpdateMetrics(metric)
+			_, err := m.service.UpdateMetrics(context.Background(), metric)
 			if err != nil {
 				fmt.Println("[ERR] Error updating metrics", metric, err)
 				continue
@@ -75,14 +76,14 @@ func (m *MetricsCollector) Start() {
 	go func() {
 		for {
 			time.Sleep(m.params.ReportInterval)
-			accumulated, err := m.service.GetAllAccumulated()
+			accumulated, err := m.service.GetAllAccumulated(context.Background())
 			if err != nil {
 				fmt.Println("[ERR] Error getting all accumulated metrics", err)
 			}
 			for _, metric := range accumulated {
 				metricsToRecord <- metric
 			}
-			err = m.service.DeleteAll()
+			err = m.service.DeleteAll(context.Background())
 			if err != nil {
 				fmt.Println("[ERR] Error deleting all metrics", err)
 				panic(err)
