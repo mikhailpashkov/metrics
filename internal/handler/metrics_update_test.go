@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -57,7 +58,7 @@ func TestUpdateMetricsHandler_ServeHTTP(t *testing.T) {
 			require.Equal(t, tt.wantStatus, rr.Result().StatusCode)
 
 			if tt.wantStatus == http.StatusOK {
-				metrics, err := repo.FindAll()
+				metrics, err := repo.FindAll(context.Background())
 				require.NoError(t, err)
 				require.NotEmpty(t, metrics)
 
@@ -65,7 +66,7 @@ func TestUpdateMetricsHandler_ServeHTTP(t *testing.T) {
 				require.NoError(t, err)
 				fmt.Println("SAVED METRICS:", string(marshal))
 
-				err = repo.DeleteAll()
+				err = repo.DeleteAll(context.Background())
 				require.NoError(t, err)
 			}
 		})

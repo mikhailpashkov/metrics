@@ -56,7 +56,7 @@ func (m *UpdateMetricsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request)
 			return
 		}
 
-		_, err = m.metricsService.UpdateCounter(name, parseInt)
+		_, err = m.metricsService.UpdateCounter(r.Context(), name, parseInt)
 		if err != nil {
 			http.Error(w, fmt.Sprintf("Value update error: %s", err), http.StatusInternalServerError)
 			return
@@ -70,7 +70,7 @@ func (m *UpdateMetricsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request)
 			return
 		}
 
-		_, err = m.metricsService.UpdateGauge(name, parseFloat)
+		_, err = m.metricsService.UpdateGauge(r.Context(), name, parseFloat)
 		if err != nil {
 			http.Error(w, fmt.Sprintf("Value update error: %s", err), http.StatusInternalServerError)
 			return

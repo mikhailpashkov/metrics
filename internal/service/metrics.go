@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"fmt"
 	"sort"
 	"time"
@@ -10,12 +11,12 @@ import (
 )
 
 type MetricsService interface {
-	UpdateMetrics(metricsModel *models.Metrics) (*models.Metrics, error)
-	UpdateCounter(name string, delta int64) (*models.Metrics, error)
-	UpdateGauge(name string, value float64) (*models.Metrics, error)
-	GetAllRecords() ([]*models.Metrics, error)
-	GetAllAccumulated() ([]*models.Metrics, error)
-	DeleteAll() error
+	UpdateMetrics(ctx context.Context, metricsModel *models.Metrics) (*models.Metrics, error)
+	UpdateCounter(ctx context.Context, name string, delta int64) (*models.Metrics, error)
+	UpdateGauge(ctx context.Context, name string, value float64) (*models.Metrics, error)
+	GetAllRecords(ctx context.Context) ([]*models.Metrics, error)
+	GetAllAccumulated(ctx context.Context) ([]*models.Metrics, error)
+	DeleteAll(ctx context.Context) error
 }
 
 type MetricsServiceImpl struct {
@@ -26,8 +27,8 @@ func NewMetricsService(metricsStorage repository.MetricsRepository) *MetricsServ
 	return &MetricsServiceImpl{metricsStorage}
 }
 
-func (ms *MetricsServiceImpl) UpdateMetrics(metricsModel *models.Metrics) (*models.Metrics, error) {
-	savedMetrics, err := ms.metricsRepository.Save(metricsModel)
+func (ms *MetricsServiceImpl) UpdateMetrics(ctx context.Context, metricsModel *models.Metrics) (*models.Metrics, error) {
+	savedMetrics, err := ms.metricsRepository.Save(ctx, metricsModel)
 	if err != nil {
 		return nil, err
 	}
@@ -35,8 +36,8 @@ func (ms *MetricsServiceImpl) UpdateMetrics(metricsModel *models.Metrics) (*mode
 	return savedMetrics, nil
 }
 
-func (ms *MetricsServiceImpl) UpdateCounter(name string, delta int64) (*models.Metrics, error) {
-	return ms.UpdateMetrics(&models.Metrics{
+func (ms *MetricsServiceImpl) UpdateCounter(ctx context.Context, name string, delta int64) (*models.Metrics, error) {
+	return ms.UpdateMetrics(ctx, &models.Metrics{
 		ID:    -1,
 		Type:  models.Counter,
 		Name:  name,
@@ -45,8 +46,8 @@ func (ms *MetricsServiceImpl) UpdateCounter(name string, delta int64) (*models.M
 	})
 }
 
-func (ms *MetricsServiceImpl) UpdateGauge(name string, value float64) (*models.Metrics, error) {
-	return ms.UpdateMetrics(&models.Metrics{
+func (ms *MetricsServiceImpl) UpdateGauge(ctx context.Context, name string, value float64) (*models.Metrics, error) {
+	return ms.UpdateMetrics(ctx, &models.Metrics{
 		ID:    -1,
 		Type:  models.Gauge,
 		Name:  name,
@@ -55,12 +56,12 @@ func (ms *MetricsServiceImpl) UpdateGauge(name string, value float64) (*models.M
 	})
 }
 
-func (ms *MetricsServiceImpl) GetAllRecords() ([]*models.Metrics, error) {
-	return ms.metricsRepository.FindAll()
+func (ms *MetricsServiceImpl) GetAllRecords(ctx context.Context) ([]*models.Metrics, error) {
+	return ms.metricsRepository.FindAll(ctx)
 }
 
-func (ms *MetricsServiceImpl) GetAllAccumulated() ([]*models.Metrics, error) {
-	records, err := ms.GetAllRecords()
+func (ms *MetricsServiceImpl) GetAllAccumulated(ctx context.Context) ([]*models.Metrics, error) {
+	records, err := ms.GetAllRecords(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -83,7 +84,8 @@ func (ms *MetricsServiceImpl) GetAllAccumulated() ([]*models.Metrics, error) {
 			}
 		}
 
-		if recordsType == models.Counter {
+		switch recordsType {
+		case models.Counter:
 			var accumulatedDelta int64
 			for _, record := range groupedRecords {
 				if record.Delta == nil {
@@ -102,9 +104,7 @@ func (ms *MetricsServiceImpl) GetAllAccumulated() ([]*models.Metrics, error) {
 			}
 			result = append(result, accumulatedMetric)
 			continue
-		}
-
-		if recordsType == models.Gauge {
+		case models.Gauge:
 			sort.Slice(groupedRecords, func(i, j int) bool {
 				return groupedRecords[i].ID < groupedRecords[j].ID
 			})
@@ -112,14 +112,14 @@ func (ms *MetricsServiceImpl) GetAllAccumulated() ([]*models.Metrics, error) {
 
 			result = append(result, lastRecordByTS)
 			continue
+		default:
+			panic("invalid record type")
 		}
-
-		panic("invalid record type")
 	}
 
 	return result, nil
 }
 
-func (ms *MetricsServiceImpl) DeleteAll() error {
-	return ms.metricsRepository.DeleteAll()
+func (ms *MetricsServiceImpl) DeleteAll(ctx context.Context) error {
+	return ms.metricsRepository.DeleteAll(ctx)
 }

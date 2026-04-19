@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"context"
 	"errors"
 	"maps"
 	"slices"
@@ -10,11 +11,11 @@ import (
 )
 
 type MetricsRepository interface {
-	FindById(id int64) (*models.Metrics, error)
-	FindByName(name string) ([]*models.Metrics, error)
-	FindAll() ([]*models.Metrics, error)
-	Save(*models.Metrics) (*models.Metrics, error)
-	DeleteAll() error
+	FindById(ctx context.Context, id int64) (*models.Metrics, error)
+	FindByName(ctx context.Context, name string) ([]*models.Metrics, error)
+	FindAll(ctx context.Context) ([]*models.Metrics, error)
+	Save(ctx context.Context, metrics *models.Metrics) (*models.Metrics, error)
+	DeleteAll(ctx context.Context) error
 }
 
 type MetricsMemoryRepository struct {
@@ -34,7 +35,7 @@ func NewMetricsMemoryRepository() MetricsRepository {
 	}
 }
 
-func (m *MetricsMemoryRepository) FindById(id int64) (*models.Metrics, error) {
+func (m *MetricsMemoryRepository) FindById(ctx context.Context, id int64) (*models.Metrics, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -45,7 +46,7 @@ func (m *MetricsMemoryRepository) FindById(id int64) (*models.Metrics, error) {
 	return metrics, nil
 }
 
-func (m *MetricsMemoryRepository) FindByName(name string) ([]*models.Metrics, error) {
+func (m *MetricsMemoryRepository) FindByName(ctx context.Context, name string) ([]*models.Metrics, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -58,13 +59,13 @@ func (m *MetricsMemoryRepository) FindByName(name string) ([]*models.Metrics, er
 	return metrics, nil
 }
 
-func (m *MetricsMemoryRepository) FindAll() ([]*models.Metrics, error) {
+func (m *MetricsMemoryRepository) FindAll(ctx context.Context) ([]*models.Metrics, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	return slices.Collect(maps.Values(m.storage)), nil
 }
 
-func (m *MetricsMemoryRepository) Save(metrics *models.Metrics) (*models.Metrics, error) {
+func (m *MetricsMemoryRepository) Save(ctx context.Context, metrics *models.Metrics) (*models.Metrics, error) {
 	if metrics == nil {
 		return nil, m.errMetricsIsNil
 	}
@@ -80,7 +81,7 @@ func (m *MetricsMemoryRepository) Save(metrics *models.Metrics) (*models.Metrics
 	return metrics, nil
 }
 
-func (m *MetricsMemoryRepository) DeleteAll() error {
+func (m *MetricsMemoryRepository) DeleteAll(ctx context.Context) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.storage = make(map[int64]*models.Metrics)

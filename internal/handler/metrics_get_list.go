@@ -62,7 +62,7 @@ func (m *GetListMetricsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	accumulated, err := m.metricsService.GetAllAccumulated()
+	accumulated, err := m.metricsService.GetAllAccumulated(r.Context())
 	if err != nil {
 		http.Error(w, fmt.Sprintf("GetAllAccumulated error: %s", err), http.StatusInternalServerError)
 		return
