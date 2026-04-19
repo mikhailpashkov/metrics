@@ -9,10 +9,11 @@ import (
 	"github.com/mikhailpashkov/metrics/internal/handler"
 	"github.com/mikhailpashkov/metrics/internal/repository"
 	"github.com/mikhailpashkov/metrics/internal/service"
+	"github.com/mikhailpashkov/metrics/internal/utils"
 )
 
 func main() {
-	addr := flag.String("a", "localhost:8080", "HTTP server address")
+	addr := utils.GetStringParam("ADDRESS", "a", "HTTP server address", "localhost:8080")
 	flag.Parse()
 
 	fmt.Println("SERVER", *addr)
