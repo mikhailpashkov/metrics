@@ -2,6 +2,7 @@ package reporter
 
 import (
 	"fmt"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -91,7 +92,7 @@ func TestSendMetrics(t *testing.T) {
 			}))
 			defer ts.Close()
 
-			br := NewBackendReporter(ts.Listener.Addr().String())
+			br := NewBackendReporter(ts.Listener.Addr().String(), slog.Default())
 
 			err := br.SendMetrics(tt.metric)
 			if tt.wantErr {
