@@ -39,7 +39,7 @@ func main() {
 	metricsService := service.NewMetricsService(metricsRepository)
 
 	handlers := []handler.MHandler{
-		middleware.WithLogging(handler.NewGetMetricsHandler(logger, metricsService)),
+		middleware.WithLogging(handler.NewGetMetricsPathParamsHandler(logger, metricsService)),
 		middleware.WithLogging(handler.NewGetListMetricsHandler(logger, metricsService)),
 		middleware.WithLogging(handler.NewUpdateMetricsHandler(logger, metricsService)),
 	}

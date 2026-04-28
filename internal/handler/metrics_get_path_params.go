@@ -9,25 +9,25 @@ import (
 	"github.com/mikhailpashkov/metrics/internal/service"
 )
 
-type GetMetricsHandler struct {
+type GetMetricsPathParamsHandler struct {
 	logger         *slog.Logger
 	metricsService service.MetricsService
 }
 
-func NewGetMetricsHandler(logger *slog.Logger, metricsService service.MetricsService) *GetMetricsHandler {
-	return &GetMetricsHandler{
+func NewGetMetricsPathParamsHandler(logger *slog.Logger, metricsService service.MetricsService) *GetMetricsPathParamsHandler {
+	return &GetMetricsPathParamsHandler{
 		logger:         logger,
 		metricsService: metricsService,
 	}
 }
 
-func (m *GetMetricsHandler) GetLogger() *slog.Logger { return m.logger }
+func (m *GetMetricsPathParamsHandler) GetLogger() *slog.Logger { return m.logger }
 
-func (m *GetMetricsHandler) GetUrlPattern() string {
+func (m *GetMetricsPathParamsHandler) GetUrlPattern() string {
 	return "/value/{type}/{name}"
 }
 
-func (m *GetMetricsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (m *GetMetricsPathParamsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/plain")
 	if r.Method != http.MethodGet {
 		http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
