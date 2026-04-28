@@ -41,7 +41,7 @@ func main() {
 	handlers := []handler.MHandler{
 		middleware.WithLogging(handler.NewGetMetricsPathParamsHandler(logger, metricsService)),
 		middleware.WithLogging(handler.NewGetListMetricsHandler(logger, metricsService)),
-		middleware.WithLogging(handler.NewUpdateMetricsHandler(logger, metricsService)),
+		middleware.WithLogging(handler.NewUpdateMetricsPathParamsHandler(logger, metricsService)),
 	}
 
 	r := chi.NewRouter()
