@@ -1,27 +1,27 @@
 package handler
 
 import (
+	"log/slog"
 	"net/http"
 	"strconv"
 
 	models "github.com/mikhailpashkov/metrics/internal/model"
 	"github.com/mikhailpashkov/metrics/internal/service"
-	"go.uber.org/zap"
 )
 
 type GetMetricsHandler struct {
-	logger         *zap.Logger
+	logger         *slog.Logger
 	metricsService service.MetricsService
 }
 
-func NewGetMetricsHandler(logger *zap.Logger, metricsService service.MetricsService) *GetMetricsHandler {
+func NewGetMetricsHandler(logger *slog.Logger, metricsService service.MetricsService) *GetMetricsHandler {
 	return &GetMetricsHandler{
 		logger:         logger,
 		metricsService: metricsService,
 	}
 }
 
-func (m *GetMetricsHandler) GetLogger() *zap.Logger { return m.logger }
+func (m *GetMetricsHandler) GetLogger() *slog.Logger { return m.logger }
 
 func (m *GetMetricsHandler) GetUrlPattern() string {
 	return "/value/{type}/{name}"

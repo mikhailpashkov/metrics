@@ -6,22 +6,68 @@ import (
 	"strconv"
 )
 
-func GetStringParam(envName string, flagName string, flagUsage string, def string) *string {
-	value := os.Getenv(envName)
-	if value != "" {
-		return &value
-	}
-	return flag.String(flagName, def, flagUsage)
+type ValueConsumer[T string | int] func(T)
+
+type PendingFlagParse func()
+
+type Param interface {
+	do() PendingFlagParse
 }
 
-func GetIntParam(envName string, flagName string, flagUsage string, def int) *int {
-	value := os.Getenv(envName)
+type StringParam struct {
+	EnvName       string
+	FlagName      string
+	FlagUsage     string
+	Default       string
+	ValueConsumer ValueConsumer[string]
+}
+
+type IntParam struct {
+	EnvName       string
+	FlagName      string
+	FlagUsage     string
+	Default       int
+	ValueConsumer ValueConsumer[int]
+}
+
+func (param *StringParam) do() PendingFlagParse {
+	value := os.Getenv(param.EnvName)
+	if value != "" {
+		param.ValueConsumer(value)
+		return nil
+	}
+	valuePtr := flag.String(param.FlagName, param.Default, param.FlagUsage)
+	return func() {
+		param.ValueConsumer(*valuePtr)
+	}
+}
+
+func (param *IntParam) do() PendingFlagParse {
+	value := os.Getenv(param.EnvName)
 	if value != "" {
 		i, err := strconv.Atoi(value)
 		if err != nil {
 			panic(err)
 		}
-		return &i
+		param.ValueConsumer(i)
+		return nil
 	}
-	return flag.Int(flagName, def, flagUsage)
+	valuePtr := flag.Int(param.FlagName, param.Default, param.FlagUsage)
+	return func() {
+		param.ValueConsumer(*valuePtr)
+	}
+}
+
+func GetParams(configs []Param) {
+	pendingFlagParseList := make([]PendingFlagParse, 0, len(configs))
+	for _, config := range configs {
+		pendingFlagParseList = append(pendingFlagParseList, config.do())
+	}
+	flag.Parse()
+	for _, pendingFlagParse := range pendingFlagParseList {
+		if pendingFlagParse == nil {
+			continue
+		}
+		pendingFlagParse()
+	}
 }

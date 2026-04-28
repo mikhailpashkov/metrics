@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -11,13 +12,12 @@ import (
 	"github.com/mikhailpashkov/metrics/internal/repository"
 	"github.com/mikhailpashkov/metrics/internal/service"
 	"github.com/stretchr/testify/require"
-	"go.uber.org/zap"
 )
 
 func TestUpdateMetricsHandler_ServeHTTP(t *testing.T) {
 	repo := repository.NewMetricsMemoryRepository()
 	svc := service.NewMetricsService(repo)
-	handler := NewUpdateMetricsHandler(&zap.Logger{}, svc)
+	handler := NewUpdateMetricsHandler(slog.Default(), svc)
 
 	mux := http.NewServeMux()
 	mux.Handle("/update/{type}/{name}/{value}", handler)

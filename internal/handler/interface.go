@@ -1,13 +1,12 @@
 package handler
 
 import (
+	"log/slog"
 	"net/http"
-
-	"go.uber.org/zap"
 )
 
 type MHandler interface {
-	GetLogger() *zap.Logger // fixme: шляпа какая-то)) может через context можно как-то это пробрасывать?
+	GetLogger() *slog.Logger
 	GetUrlPattern() string
 	ServeHTTP(w http.ResponseWriter, r *http.Request)
 }

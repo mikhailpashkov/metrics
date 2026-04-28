@@ -2,27 +2,27 @@ package handler
 
 import (
 	"fmt"
+	"log/slog"
 	"net/http"
 	"strconv"
 
 	models "github.com/mikhailpashkov/metrics/internal/model"
 	"github.com/mikhailpashkov/metrics/internal/service"
-	"go.uber.org/zap"
 )
 
 type UpdateMetricsHandler struct {
-	logger         *zap.Logger
+	logger         *slog.Logger
 	metricsService service.MetricsService
 }
 
-func NewUpdateMetricsHandler(logger *zap.Logger, metricsService service.MetricsService) *UpdateMetricsHandler {
+func NewUpdateMetricsHandler(logger *slog.Logger, metricsService service.MetricsService) *UpdateMetricsHandler {
 	return &UpdateMetricsHandler{
 		logger:         logger,
 		metricsService: metricsService,
 	}
 }
 
-func (m *UpdateMetricsHandler) GetLogger() *zap.Logger { return m.logger }
+func (m *UpdateMetricsHandler) GetLogger() *slog.Logger { return m.logger }
 
 func (m *UpdateMetricsHandler) GetUrlPattern() string {
 	return "/update/{type}/{name}/{value}"
@@ -40,11 +40,6 @@ func (m *UpdateMetricsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request)
 
 	if mType == "" {
 		http.Error(w, "Empty type", http.StatusBadRequest)
-		return
-	}
-
-	if mType != models.Gauge && mType != models.Counter {
-		http.Error(w, "Invalid type", http.StatusBadRequest)
 		return
 	}
 
@@ -67,7 +62,13 @@ func (m *UpdateMetricsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request)
 			return
 		}
 
-		fmt.Println("updated ", mType, name, parseInt)
+		m.GetLogger().Debug(
+			"metric updated",
+			"type", mType,
+			"name", name,
+			"value", parseInt,
+		)
+
 	case models.Gauge:
 		parseFloat, err := strconv.ParseFloat(valueStr, 64)
 		if err != nil {
@@ -81,6 +82,15 @@ func (m *UpdateMetricsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request)
 			return
 		}
 
-		fmt.Println("updated ", mType, name, parseFloat)
+		m.GetLogger().Debug(
+			"metric updated",
+			"type", mType,
+			"name", name,
+			"value", parseFloat,
+		)
+
+	default:
+		http.Error(w, "Invalid type", http.StatusBadRequest)
+		return
 	}
 }

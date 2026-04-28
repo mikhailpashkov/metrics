@@ -1,8 +1,8 @@
 package main
 
 import (
-	"flag"
-	"fmt"
+	"log/slog"
+	"os"
 	"time"
 
 	"github.com/mikhailpashkov/metrics/internal/agent"
@@ -14,23 +14,51 @@ import (
 )
 
 func main() {
-	fmt.Println("AGENT")
 
-	addr := utils.GetStringParam("ADDRESS", "a", "backend server address", "localhost:8080")
-	pollInterval := utils.GetIntParam("POLL_INTERVAL", "p", "poll interval in seconds", 2)
-	reportInterval := utils.GetIntParam("REPORT_INTERVAL", "r", "report interval in seconds", 10)
+	opts := &slog.HandlerOptions{
+		Level: slog.LevelDebug,
+	}
 
-	flag.Parse()
+	logger := slog.New(slog.NewTextHandler(os.Stdout, opts))
+	logger.Info("AGENT")
 
-	fmt.Println("addr", *addr)
-	fmt.Println("pollInterval", *pollInterval)
-	fmt.Println("reportInterval", *reportInterval)
+	var addr string
+	var pollInterval int
+	var reportInterval int
+
+	utils.GetParams([]utils.Param{
+		&utils.StringParam{
+			EnvName:       "ADDRESS",
+			FlagName:      "a",
+			FlagUsage:     "backend server address",
+			Default:       "localhost:8080",
+			ValueConsumer: func(v string) { addr = v },
+		},
+		&utils.IntParam{
+			EnvName:       "POLL_INTERVAL",
+			FlagName:      "p",
+			FlagUsage:     "poll interval in seconds",
+			Default:       2,
+			ValueConsumer: func(v int) { pollInterval = v },
+		},
+		&utils.IntParam{
+			EnvName:       "REPORT_INTERVAL",
+			FlagName:      "r",
+			FlagUsage:     "report interval in seconds",
+			Default:       10,
+			ValueConsumer: func(v int) { reportInterval = v },
+		},
+	})
+
+	logger.Info("params", "addr", addr)
+	logger.Info("params", "pollInterval", pollInterval)
+	logger.Info("params", "reportInterval", reportInterval)
 
 	metricsRepository := repository.NewMetricsMemoryRepository()
 	metricsService := service.NewMetricsService(metricsRepository)
 
 	//consoleReporter := reporter.NewConsoleReporter()
-	backendReporter := reporter.NewBackendReporter(*addr)
+	backendReporter := reporter.NewBackendReporter(addr, logger)
 
 	memStatsPoller := poller.NewMemStatsPoller()
 	pollCountPoller := poller.NewPollCountPoller()
@@ -45,8 +73,8 @@ func main() {
 		},
 		backendReporter,
 		&agent.MetricsCollectorParams{
-			PollInterval:   time.Duration(*pollInterval) * time.Second,
-			ReportInterval: time.Duration(*reportInterval) * time.Second,
+			PollInterval:   time.Duration(pollInterval) * time.Second,
+			ReportInterval: time.Duration(reportInterval) * time.Second,
 			PollCallback:   pollCountPoller.IncrementCount,
 			ReportCallback: pollCountPoller.ResetCount,
 		},

@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/mikhailpashkov/metrics/internal/handler"
-	"go.uber.org/zap"
 )
 
 type fetchingInfoResponseWriter struct {
@@ -34,7 +33,7 @@ func (h *loggingHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	responseWriter := &fetchingInfoResponseWriter{
 		ResponseWriter: w,
-		statusCode:     http.StatusOK, // логика с прописыванием 200 во внутренней реализации Write'а не сработает, поэтому по-дефолту StatusOK
+		statusCode:     http.StatusOK, // логика с прописыванием 200 во внутренней реализации Write'а не сработает, поэтому по-дефолту ставим StatusOK
 		size:           0,
 	}
 
@@ -42,12 +41,12 @@ func (h *loggingHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	duration := time.Since(startTime)
 
-	h.MHandler.GetLogger().Info("Request processed",
-		zap.String("url", r.URL.String()),
-		zap.String("method", r.Method),
-		zap.Duration("duration", duration),
-		zap.Int("status", responseWriter.statusCode),
-		zap.Int("size", responseWriter.size),
+	h.MHandler.GetLogger().Info("request processed",
+		"url", r.URL.String(),
+		"method", r.Method,
+		"duration", duration,
+		"status", responseWriter.statusCode,
+		"size", responseWriter.size,
 	)
 }
 

@@ -3,15 +3,15 @@ package handler
 import (
 	"fmt"
 	"html/template"
+	"log/slog"
 	"net/http"
 	"sort"
 
 	"github.com/mikhailpashkov/metrics/internal/service"
-	"go.uber.org/zap"
 )
 
 type GetListMetricsHandler struct {
-	logger         *zap.Logger
+	logger         *slog.Logger
 	metricsService service.MetricsService
 }
 
@@ -48,14 +48,14 @@ const htmlTemplate = `<html>
 </html>
 `
 
-func NewGetListMetricsHandler(logger *zap.Logger, metricsService service.MetricsService) *GetListMetricsHandler {
+func NewGetListMetricsHandler(logger *slog.Logger, metricsService service.MetricsService) *GetListMetricsHandler {
 	return &GetListMetricsHandler{
 		logger:         logger,
 		metricsService: metricsService,
 	}
 }
 
-func (m *GetListMetricsHandler) GetLogger() *zap.Logger { return m.logger }
+func (m *GetListMetricsHandler) GetLogger() *slog.Logger { return m.logger }
 
 func (m *GetListMetricsHandler) GetUrlPattern() string {
 	return "/"

@@ -3,6 +3,7 @@ package reporter
 import (
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -15,15 +16,21 @@ import (
 type BackendReporter struct {
 	address string
 	client  *resty.Client
+	logger  *slog.Logger
 }
 
-func NewBackendReporter(address string) *BackendReporter {
+func NewBackendReporter(address string, logger *slog.Logger) *BackendReporter {
 	client := resty.New()
 	client.SetTimeout(5 * time.Second)
 	return &BackendReporter{
 		address: address,
 		client:  client,
+		logger:  logger,
 	}
+}
+
+func (r *BackendReporter) GetLogger() *slog.Logger {
+	return r.logger
 }
 
 func (r *BackendReporter) SendMetrics(metrics *models.Metrics) error {
@@ -78,7 +85,12 @@ func (r *BackendReporter) SendMetrics(metrics *models.Metrics) error {
 		return fmt.Errorf("update metrics failed: unexpected status %d: %s", resp.StatusCode(), string(body))
 	}
 
-	fmt.Println("BackendReporter - sent update for", metrics.Type, metrics.Name, metricsValue)
+	r.GetLogger().Debug(
+		"sent update",
+		"type", metrics.Type,
+		"name", metrics.Name,
+		"value", metricsValue,
+	)
 
 	return nil
 }

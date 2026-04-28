@@ -2,21 +2,28 @@ package reporter
 
 import (
 	"encoding/json"
-	"fmt"
+	"log/slog"
 
 	models "github.com/mikhailpashkov/metrics/internal/model"
 )
 
-type ConsoleReporter struct{}
-
-func NewConsoleReporter() MetricsReporter {
-	return &ConsoleReporter{}
+type ConsoleReporter struct {
+	logger *slog.Logger
 }
-func (c ConsoleReporter) SendMetrics(metrics *models.Metrics) error {
+
+func NewConsoleReporter(logger *slog.Logger) MetricsReporter {
+	return &ConsoleReporter{logger: logger}
+}
+
+func (r *ConsoleReporter) GetLogger() *slog.Logger {
+	return r.logger
+}
+
+func (r *ConsoleReporter) SendMetrics(metrics *models.Metrics) error {
 	marshal, err := json.Marshal(metrics)
 	if err != nil {
 		return err
 	}
-	fmt.Println(string(marshal))
+	r.GetLogger().Info(string(marshal))
 	return nil
 }
