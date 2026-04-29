@@ -2,6 +2,7 @@ package reporter
 
 import (
 	"fmt"
+	"io"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
@@ -84,10 +85,14 @@ func TestSendMetrics(t *testing.T) {
 				w.WriteHeader(tt.serverStatus)
 				_, err := fmt.Fprint(w, tt.serverResponse)
 				require.NoError(t, err, "failed to write server response")
-				require.Equal(t, r.Method, http.MethodPost)
-				require.Equal(t, r.Header.Get("Content-Type"), "text/plain")
+				require.Equal(t, http.MethodPost, r.Method)
+				require.Equal(t, "application/json", r.Header.Get("Content-Type"))
 				if tt.metric != nil {
-					require.Contains(t, r.URL.Path, tt.metric.Name, "URL path want to contain metric name")
+					defer r.Body.Close()
+					bodyBytes, err := io.ReadAll(r.Body)
+					require.NoError(t, err)
+					bodyString := string(bodyBytes)
+					require.Contains(t, bodyString, tt.metric.Name, "body want to contain metric name")
 				}
 			}))
 			defer ts.Close()
