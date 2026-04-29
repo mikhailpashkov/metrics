@@ -32,7 +32,7 @@ func TestPollCountPoller_GetMetrics(t *testing.T) {
 			},
 			want: want{
 				mType: models.Counter,
-				mName: "custom.PollCount",
+				mName: "PollCount",
 				delta: ptrInt64(0),
 				value: nil,
 			},
@@ -44,7 +44,7 @@ func TestPollCountPoller_GetMetrics(t *testing.T) {
 			},
 			want: want{
 				mType: models.Counter,
-				mName: "custom.PollCount",
+				mName: "PollCount",
 				delta: ptrInt64(0),
 				value: nil,
 			},
