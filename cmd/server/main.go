@@ -39,11 +39,15 @@ func main() {
 	metricsService := service.NewMetricsService(metricsRepository)
 
 	handlers := []handler.MHandler{
-		middleware.WithLogging(handler.NewGetMetricsHandler(logger, metricsService)),
-		middleware.WithLogging(handler.NewGetMetricsPathParamsHandler(logger, metricsService)),
-		middleware.WithLogging(handler.NewGetListMetricsHandler(logger, metricsService)),
-		middleware.WithLogging(handler.NewUpdateMetricsHandler(logger, metricsService)),
-		middleware.WithLogging(handler.NewUpdateMetricsPathParamsHandler(logger, metricsService)),
+		handler.NewGetMetricsHandler(logger, metricsService),
+		handler.NewGetMetricsPathParamsHandler(logger, metricsService),
+		handler.NewGetListMetricsHandler(logger, metricsService),
+		handler.NewUpdateMetricsHandler(logger, metricsService),
+		handler.NewUpdateMetricsPathParamsHandler(logger, metricsService),
+	}
+
+	for i, h := range handlers {
+		handlers[i] = middleware.WithLogging(middleware.WithGZIPSupport(h))
 	}
 
 	r := chi.NewRouter()
