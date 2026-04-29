@@ -1,14 +1,15 @@
 package reporter
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
-	"net/url"
 	"strconv"
 	"time"
 
+	"github.com/mikhailpashkov/metrics/internal/mapper"
 	models "github.com/mikhailpashkov/metrics/internal/model"
 	"resty.dev/v3"
 )
@@ -55,15 +56,21 @@ func (r *BackendReporter) SendMetrics(metrics *models.Metrics) error {
 		return fmt.Errorf("unknown metric type: %s", metrics.Type)
 	}
 
-	updateUrl := fmt.Sprintf("http://%s/update/%s/%s/%s",
+	updateUrl := fmt.Sprintf("http://%s/update",
 		r.address,
-		metrics.Type,
-		url.PathEscape(metrics.Name),
-		url.PathEscape(metricsValue),
 	)
 
+	requestBody, err := mapper.MetricsToUpdateMetricsRequest(metrics)
+	if err != nil {
+		return errors.Join(
+			errors.New("update metrics failed"),
+			err,
+		)
+	}
+
 	request := r.client.R().
-		SetHeader("Content-Type", "text/plain").
+		SetHeader("Content-Type", "application/json").
+		SetBody(requestBody).
 		SetRetryCount(3).
 		SetRetryWaitTime(1 * time.Second).
 		SetRetryMaxWaitTime(5 * time.Second).

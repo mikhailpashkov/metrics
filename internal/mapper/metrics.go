@@ -30,7 +30,27 @@ func MetricsToGetMetricsResponse(metrics *models.Metrics) (*dto.GetMetricsRespon
 		Type:  metrics.Type,
 		Value: value,
 	}, nil
+}
 
+func MetricsToUpdateMetricsRequest(metrics *models.Metrics) (*dto.UpdateMetricsRequest, error) {
+	var value json.Number
+
+	switch metrics.Type {
+	case models.Gauge:
+		formatFloat := strconv.FormatFloat(*metrics.Value, 'f', -1, 64)
+		value = json.Number(formatFloat)
+	case models.Counter:
+		formatInt := strconv.FormatInt(*metrics.Delta, 10)
+		value = json.Number(formatInt)
+	default:
+		return nil, fmt.Errorf("failed to map metrics. invalid metric type: %s", metrics.Type)
+	}
+
+	return &dto.UpdateMetricsRequest{
+		ID:    metrics.Name,
+		Type:  metrics.Type,
+		Value: value,
+	}, nil
 }
 
 func MetricsFromUpdateMetricsRequest(request dto.UpdateMetricsRequest) (*models.Metrics, error) {
