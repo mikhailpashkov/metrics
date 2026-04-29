@@ -32,6 +32,7 @@ func (m *UpdateMetricsHandler) GetUrlPattern() string {
 }
 
 func (m *UpdateMetricsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
 	if r.Method != http.MethodPost {
 		http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
 		return
