@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sort"
 	"time"
@@ -17,17 +18,26 @@ type MetricsService interface {
 	GetAllRecords(ctx context.Context) ([]*models.Metrics, error)
 	GetAllAccumulated(ctx context.Context) ([]*models.Metrics, error)
 	DeleteAll(ctx context.Context) error
+	Restore(ctx context.Context) error
+	SetupBackup(ctx context.Context, storeInterval int) error
 }
 
 type MetricsServiceImpl struct {
 	metricsRepository repository.MetricsRepository
+	backupRepository  repository.BackupRepository
+	backupCallback    func(ctx context.Context)
 }
 
-func NewMetricsService(metricsStorage repository.MetricsRepository) *MetricsServiceImpl {
-	return &MetricsServiceImpl{metricsStorage}
+func NewMetricsService(metricsStorage repository.MetricsRepository, backupRepository repository.BackupRepository) MetricsService {
+	return &MetricsServiceImpl{
+		metricsRepository: metricsStorage,
+		backupRepository:  backupRepository,
+		backupCallback:    func(ctx context.Context) {},
+	}
 }
 
 func (ms *MetricsServiceImpl) UpdateMetrics(ctx context.Context, metricsModel *models.Metrics) (*models.Metrics, error) {
+	defer ms.backupCallback(ctx)
 	savedMetrics, err := ms.metricsRepository.Save(ctx, metricsModel)
 	if err != nil {
 		return nil, err
@@ -66,6 +76,10 @@ func (ms *MetricsServiceImpl) GetAllAccumulated(ctx context.Context) ([]*models.
 		return nil, err
 	}
 
+	if len(records) == 0 {
+		return []*models.Metrics{}, nil
+	}
+
 	nameToRecords := make(map[string][]*models.Metrics)
 	for _, record := range records {
 		_, ok := nameToRecords[record.Name]
@@ -80,7 +94,7 @@ func (ms *MetricsServiceImpl) GetAllAccumulated(ctx context.Context) ([]*models.
 		recordsType := groupedRecords[0].Type
 		for _, record := range groupedRecords {
 			if record.Type != recordsType {
-				panic("record type mismatch")
+				return nil, fmt.Errorf("record type mismatch")
 			}
 		}
 
@@ -108,12 +122,12 @@ func (ms *MetricsServiceImpl) GetAllAccumulated(ctx context.Context) ([]*models.
 			sort.Slice(groupedRecords, func(i, j int) bool {
 				return groupedRecords[i].ID < groupedRecords[j].ID
 			})
-			lastRecordByTS := groupedRecords[len(groupedRecords)-1]
+			lastRecordByID := groupedRecords[len(groupedRecords)-1]
 
-			result = append(result, lastRecordByTS)
+			result = append(result, lastRecordByID)
 			continue
 		default:
-			panic("invalid record type")
+			return nil, fmt.Errorf("invalid record type")
 		}
 	}
 
@@ -121,5 +135,94 @@ func (ms *MetricsServiceImpl) GetAllAccumulated(ctx context.Context) ([]*models.
 }
 
 func (ms *MetricsServiceImpl) DeleteAll(ctx context.Context) error {
+	defer ms.backupCallback(ctx)
 	return ms.metricsRepository.DeleteAll(ctx)
+}
+
+func (ms *MetricsServiceImpl) Restore(ctx context.Context) error {
+	restoredMetrics, err := ms.backupRepository.FindAll(ctx)
+	if err != nil {
+		return err
+	}
+
+	savedIds := make([]int64, 0, len(restoredMetrics))
+	errs := make([]error, 0)
+	for _, bMetrics := range restoredMetrics {
+		toSave := &models.Metrics{
+			ID:    -1,
+			Type:  bMetrics.Type,
+			Name:  bMetrics.ID,
+			Delta: bMetrics.Delta,
+			Value: bMetrics.Value,
+			TS:    time.Now().UnixMilli(),
+		}
+		saved, ferr := ms.metricsRepository.Save(ctx, toSave)
+		if ferr != nil {
+			errs = append(errs, ferr)
+			continue
+		}
+		savedIds = append(savedIds, saved.ID)
+		fmt.Printf("Restored: %d %s %s\n", saved.ID, saved.Type, saved.Name)
+	}
+
+	if len(errs) > 0 {
+		for _, id := range savedIds {
+			ferr := ms.metricsRepository.DeleteById(ctx, id)
+			if ferr != nil {
+				errs = append(errs, ferr)
+			}
+		}
+		return errors.Join(errs...)
+	}
+
+	return nil
+}
+
+func (ms *MetricsServiceImpl) SetupBackup(ctx context.Context, storeInterval int) error {
+	if storeInterval == 0 {
+		ms.backupCallback = ms.doBackup
+		return nil
+	}
+
+	go func() {
+		ticker := time.NewTicker(time.Duration(storeInterval) * time.Second)
+		defer ticker.Stop()
+
+		for {
+			select {
+			case <-ctx.Done():
+				fmt.Println("stopping goroutine:", ctx.Err())
+				return
+			case <-ticker.C:
+				ms.doBackup(ctx)
+			}
+		}
+	}()
+
+	return nil
+}
+
+func (ms *MetricsServiceImpl) doBackup(ctx context.Context) {
+	fmt.Println("do backup")
+	metrics, err := ms.GetAllAccumulated(ctx)
+	if err != nil {
+		fmt.Println("[ERR] failed to GetAllAccumulated metrics ", err)
+		return
+	}
+
+	backupMetrics := make([]*models.BackupMetrics, 0, len(metrics))
+	for _, m := range metrics {
+		backupMetrics = append(backupMetrics, &models.BackupMetrics{
+			ID:    m.Name,
+			Type:  m.Type,
+			Delta: m.Delta,
+			Value: m.Value,
+		})
+	}
+
+	err = ms.backupRepository.SaveAll(ctx, backupMetrics)
+	if err != nil {
+		fmt.Println("[ERR] failed to backup metrics ", err)
+		return
+	}
 }

@@ -2,11 +2,12 @@ package utils
 
 import (
 	"flag"
+	"fmt"
 	"os"
 	"strconv"
 )
 
-type ValueConsumer[T string | int] func(T)
+type ValueConsumer[T string | int | bool] func(T)
 
 type PendingFlagParse func()
 
@@ -28,6 +29,14 @@ type IntParam struct {
 	FlagUsage     string
 	Default       int
 	ValueConsumer ValueConsumer[int]
+}
+
+type BoolParam struct {
+	EnvName       string
+	FlagName      string
+	FlagUsage     string
+	Default       bool
+	ValueConsumer ValueConsumer[bool]
 }
 
 func (param *StringParam) do() PendingFlagParse {
@@ -53,6 +62,25 @@ func (param *IntParam) do() PendingFlagParse {
 		return nil
 	}
 	valuePtr := flag.Int(param.FlagName, param.Default, param.FlagUsage)
+	return func() {
+		param.ValueConsumer(*valuePtr)
+	}
+}
+
+func (param *BoolParam) do() PendingFlagParse {
+	value := os.Getenv(param.EnvName)
+	if value != "" {
+		switch value {
+		case "true":
+			param.ValueConsumer(true)
+		case "false":
+			param.ValueConsumer(false)
+		default:
+			panic(fmt.Errorf("invalid boolean value for env %s: %s", param.EnvName, value))
+		}
+		return nil
+	}
+	valuePtr := flag.Bool(param.FlagName, param.Default, param.FlagUsage)
 	return func() {
 		param.ValueConsumer(*valuePtr)
 	}

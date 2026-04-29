@@ -55,7 +55,8 @@ func main() {
 	logger.Info("params", "reportInterval", reportInterval)
 
 	metricsRepository := repository.NewMetricsMemoryRepository()
-	metricsService := service.NewMetricsService(metricsRepository)
+	backupRepository := &repository.StubBackupRepository{}
+	metricsService := service.NewMetricsService(metricsRepository, backupRepository)
 
 	//consoleReporter := reporter.NewConsoleReporter()
 	backendReporter := reporter.NewBackendReporter(addr, logger)
