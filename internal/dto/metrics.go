@@ -1,20 +1,17 @@
 package dto
 
-import "encoding/json"
-
 type GetMetricsRequest struct {
 	ID   string `json:"id"`
 	Type string `json:"type"`
 }
 
-type GetMetricsResponse struct {
-	ID    string      `json:"id"`
-	Type  string      `json:"type"`
-	Value json.Number `json:"value"`
+type MetricsDto struct {
+	ID    string   `json:"id"`
+	Type  string   `json:"type"`
+	Delta *int64   `json:"delta,omitempty"`
+	Value *float64 `json:"value,omitempty"`
 }
 
-type UpdateMetricsRequest struct {
-	ID    string      `json:"id"`
-	Type  string      `json:"type"`
-	Value json.Number `json:"value"`
-}
+type GetMetricsResponse MetricsDto
+
+type UpdateMetricsRequest MetricsDto

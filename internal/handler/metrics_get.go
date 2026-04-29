@@ -91,12 +91,7 @@ func (m *GetMetricsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	response, err := mapper.MetricsToGetMetricsResponse(found[0])
-	if err != nil {
-		m.logger.Error("error converting metrics to get metrics response", "err", err)
-		http.Error(w, "Can't map MetricsToGetMetricsResponse: "+err.Error(), http.StatusInternalServerError)
-		return
-	}
+	response := mapper.MetricsToGetMetricsResponse(found[0])
 
 	err = json.NewEncoder(w).Encode(response)
 	if err != nil {

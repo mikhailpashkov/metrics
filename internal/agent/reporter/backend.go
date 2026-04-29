@@ -1,7 +1,6 @@
 package reporter
 
 import (
-	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -60,13 +59,7 @@ func (r *BackendReporter) SendMetrics(metrics *models.Metrics) error {
 		r.address,
 	)
 
-	requestBody, err := mapper.MetricsToUpdateMetricsRequest(metrics)
-	if err != nil {
-		return errors.Join(
-			errors.New("update metrics failed"),
-			err,
-		)
-	}
+	requestBody := mapper.MetricsToUpdateMetricsRequest(metrics)
 
 	request := r.client.R().
 		SetHeader("Content-Type", "application/json").

@@ -2,14 +2,13 @@ package handler
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
-	"strconv"
 
 	"github.com/mikhailpashkov/metrics/internal/dto"
 	"github.com/mikhailpashkov/metrics/internal/mapper"
+	models "github.com/mikhailpashkov/metrics/internal/model"
 	"github.com/mikhailpashkov/metrics/internal/service"
 )
 
@@ -57,13 +56,11 @@ func (m *UpdateMetricsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	metrics, err := mapper.MetricsFromUpdateMetricsRequest(request)
-	if errors.Is(err, strconv.ErrSyntax) {
-		http.Error(w, "Invalid request: Invalid value", http.StatusBadRequest)
-		return
-	}
-	if err != nil {
-		http.Error(w, "Can't map MetricsFromUpdateMetricsRequest: "+err.Error(), http.StatusInternalServerError)
+	metrics := mapper.MetricsFromUpdateMetricsRequest(request)
+
+	isValid := models.IsValidMetrics(metrics)
+	if !isValid {
+		http.Error(w, "Metric type doesnt match its content", http.StatusBadRequest)
 		return
 	}
 

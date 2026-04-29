@@ -1,93 +1,37 @@
 package mapper
 
 import (
-	"encoding/json"
-	"errors"
-	"fmt"
-	"strconv"
 	"time"
 
 	"github.com/mikhailpashkov/metrics/internal/dto"
 	models "github.com/mikhailpashkov/metrics/internal/model"
 )
 
-func MetricsToGetMetricsResponse(metrics *models.Metrics) (*dto.GetMetricsResponse, error) {
-	var value json.Number
-
-	switch metrics.Type {
-	case models.Gauge:
-		formatFloat := strconv.FormatFloat(*metrics.Value, 'f', -1, 64)
-		value = json.Number(formatFloat)
-	case models.Counter:
-		formatInt := strconv.FormatInt(*metrics.Delta, 10)
-		value = json.Number(formatInt)
-	default:
-		return nil, fmt.Errorf("failed to map metrics. invalid metric type: %s", metrics.Type)
-	}
-
+func MetricsToGetMetricsResponse(metrics *models.Metrics) *dto.GetMetricsResponse {
 	return &dto.GetMetricsResponse{
 		ID:    metrics.Name,
 		Type:  metrics.Type,
-		Value: value,
-	}, nil
+		Value: metrics.Value,
+		Delta: metrics.Delta,
+	}
 }
 
-func MetricsToUpdateMetricsRequest(metrics *models.Metrics) (*dto.UpdateMetricsRequest, error) {
-	var value json.Number
-
-	switch metrics.Type {
-	case models.Gauge:
-		formatFloat := strconv.FormatFloat(*metrics.Value, 'f', -1, 64)
-		value = json.Number(formatFloat)
-	case models.Counter:
-		formatInt := strconv.FormatInt(*metrics.Delta, 10)
-		value = json.Number(formatInt)
-	default:
-		return nil, fmt.Errorf("failed to map metrics. invalid metric type: %s", metrics.Type)
-	}
-
+func MetricsToUpdateMetricsRequest(metrics *models.Metrics) *dto.UpdateMetricsRequest {
 	return &dto.UpdateMetricsRequest{
 		ID:    metrics.Name,
 		Type:  metrics.Type,
-		Value: value,
-	}, nil
+		Value: metrics.Value,
+		Delta: metrics.Delta,
+	}
 }
 
-func MetricsFromUpdateMetricsRequest(request dto.UpdateMetricsRequest) (*models.Metrics, error) {
-	metrics := &models.Metrics{
+func MetricsFromUpdateMetricsRequest(request dto.UpdateMetricsRequest) *models.Metrics {
+	return &models.Metrics{
 		ID:    -1,
 		Type:  request.Type,
 		Name:  request.ID,
-		Delta: nil,
-		Value: nil,
+		Delta: request.Delta,
+		Value: request.Value,
 		TS:    time.Now().UnixMilli(),
 	}
-
-	switch request.Type {
-	case models.Counter:
-		parseInt, err := request.Value.Int64()
-		if err != nil {
-			detailsErr := fmt.Errorf(
-				"failed to map metrics. value conversion error. type: %s; id: %s; value: %s; err: %s",
-				request.Type, request.ID, request.Value, err,
-			)
-			return nil, errors.Join(detailsErr, err)
-		}
-		metrics.Delta = &parseInt
-	case models.Gauge:
-		parseFloat, err := request.Value.Float64()
-		if err != nil {
-			detailsErr := fmt.Errorf(
-				"failed to map metrics. value conversion error. type: %s; id: %s; value: %s; err: %s",
-				request.Type, request.ID, request.Value, err,
-			)
-			return nil, errors.Join(detailsErr, err)
-		}
-		metrics.Value = &parseFloat
-
-	default:
-		return nil, fmt.Errorf("failed to map metrics. invalid metric type: %s", metrics.Type)
-	}
-
-	return metrics, nil
 }
