@@ -24,8 +24,8 @@ func NewUpdateMetricsPathParamsHandler(logger *slog.Logger, metricsService servi
 
 func (m *UpdateMetricsPathParamsHandler) GetLogger() *slog.Logger { return m.logger }
 
-func (m *UpdateMetricsPathParamsHandler) GetUrlPattern() string {
-	return "/update/{type}/{name}/{value}"
+func (m *UpdateMetricsPathParamsHandler) GetUrlPatterns() []string {
+	return []string{"/update/{type}/{name}/{value}"}
 }
 
 func (m *UpdateMetricsPathParamsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {

@@ -7,6 +7,6 @@ import (
 
 type MHandler interface {
 	GetLogger() *slog.Logger
-	GetUrlPattern() string
+	GetUrlPatterns() []string
 	ServeHTTP(w http.ResponseWriter, r *http.Request)
 }

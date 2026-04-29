@@ -48,7 +48,9 @@ func main() {
 
 	r := chi.NewRouter()
 	for _, h := range handlers {
-		r.Handle(h.GetUrlPattern(), h)
+		for _, urlPattern := range h.GetUrlPatterns() {
+			r.Handle(urlPattern, h)
+		}
 	}
 
 	err := http.ListenAndServe(addr, r)

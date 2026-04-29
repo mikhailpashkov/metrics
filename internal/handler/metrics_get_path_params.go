@@ -23,8 +23,8 @@ func NewGetMetricsPathParamsHandler(logger *slog.Logger, metricsService service.
 
 func (m *GetMetricsPathParamsHandler) GetLogger() *slog.Logger { return m.logger }
 
-func (m *GetMetricsPathParamsHandler) GetUrlPattern() string {
-	return "/value/{type}/{name}"
+func (m *GetMetricsPathParamsHandler) GetUrlPatterns() []string {
+	return []string{"/value/{type}/{name}"}
 }
 
 func (m *GetMetricsPathParamsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {

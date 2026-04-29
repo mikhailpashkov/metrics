@@ -57,8 +57,8 @@ func NewGetListMetricsHandler(logger *slog.Logger, metricsService service.Metric
 
 func (m *GetListMetricsHandler) GetLogger() *slog.Logger { return m.logger }
 
-func (m *GetListMetricsHandler) GetUrlPattern() string {
-	return "/"
+func (m *GetListMetricsHandler) GetUrlPatterns() []string {
+	return []string{"/"}
 }
 
 func (m *GetListMetricsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
