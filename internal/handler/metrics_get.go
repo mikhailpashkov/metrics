@@ -32,6 +32,7 @@ func (m *GetMetricsHandler) GetUrlPatterns() []string {
 func (m *GetMetricsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	if r.Method != http.MethodPost {
+		m.logger.Debug("Method not allowed")
 		http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
 		return
 	}
@@ -41,27 +42,32 @@ func (m *GetMetricsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 	err := json.NewDecoder(r.Body).Decode(&request)
 	if err != nil {
+		m.logger.Debug("invalid request: " + err.Error())
 		http.Error(w, "invalid request: "+err.Error(), http.StatusBadRequest)
 		return
 	}
 
 	if request.Type == "" {
+		m.logger.Debug("empty type")
 		http.Error(w, "Empty type", http.StatusBadRequest)
 		return
 	}
 
 	if request.Type != models.Gauge && request.Type != models.Counter {
+		m.logger.Debug("invalid type")
 		http.Error(w, "Invalid type", http.StatusBadRequest)
 		return
 	}
 
 	if request.Type == "" {
+		m.logger.Debug("empty name")
 		http.Error(w, "Empty name", http.StatusBadRequest)
 		return
 	}
 
 	accumulated, err := m.metricsService.GetAllAccumulated(r.Context())
 	if err != nil {
+		m.logger.Error("error getting accumulated metrics", "err", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -74,23 +80,27 @@ func (m *GetMetricsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if len(found) == 0 {
+		m.logger.Debug("no metrics found")
 		http.Error(w, "No metrics found", http.StatusNotFound)
 		return
 	}
 
 	if len(found) > 1 {
+		m.logger.Error("multiple metrics found")
 		http.Error(w, "Multiple metrics found", http.StatusInternalServerError)
 		return
 	}
 
 	response, err := mapper.MetricsToGetMetricsResponse(found[0])
 	if err != nil {
+		m.logger.Error("error converting metrics to get metrics response", "err", err)
 		http.Error(w, "Can't map MetricsToGetMetricsResponse: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	err = json.NewEncoder(w).Encode(response)
 	if err != nil {
+		m.logger.Error("error encoding response", "err", err)
 		http.Error(w, "Cant encode json: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
