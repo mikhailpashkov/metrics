@@ -17,7 +17,7 @@ func (p *RandomValuePoller) GetMetrics() ([]*models.Metrics, error) {
 		{
 			ID:    -1,
 			Type:  models.Gauge,
-			Name:  "custom.RandomValue",
+			Name:  "RandomValue",
 			Delta: nil,
 			Value: &randomValue,
 			TS:    time.Now().UnixMilli(),
