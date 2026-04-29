@@ -63,6 +63,7 @@ func (r *BackendReporter) SendMetrics(metrics *models.Metrics) error {
 
 	request := r.client.R().
 		SetHeader("Content-Type", "application/json").
+		SetHeader("Accept-Encoding", "gzip").
 		SetBody(requestBody).
 		SetRetryCount(3).
 		SetRetryWaitTime(1 * time.Second).
