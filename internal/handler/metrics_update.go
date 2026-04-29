@@ -33,6 +33,7 @@ func (m *UpdateMetricsHandler) GetUrlPatterns() []string {
 func (m *UpdateMetricsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	if r.Method != http.MethodPost {
+		m.logger.Debug("Method not allowed")
 		http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
 		return
 	}
@@ -42,16 +43,19 @@ func (m *UpdateMetricsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request)
 	defer r.Body.Close()
 	err := json.NewDecoder(r.Body).Decode(&request)
 	if err != nil {
+		m.logger.Debug("Error decoding body")
 		http.Error(w, "Invalid request: "+err.Error(), http.StatusBadRequest)
 		return
 	}
 
 	if request.Type == "" {
+		m.logger.Debug("Invalid request: Empty type")
 		http.Error(w, "Invalid request: Empty type", http.StatusBadRequest)
 		return
 	}
 
 	if request.ID == "" {
+		m.logger.Debug("Invalid request: Empty name")
 		http.Error(w, "Invalid request: Empty name", http.StatusBadRequest)
 		return
 	}
@@ -60,13 +64,21 @@ func (m *UpdateMetricsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request)
 
 	isValid := models.IsValidMetrics(metrics)
 	if !isValid {
+		m.logger.Debug("Metric type doesnt match its content")
 		http.Error(w, "Metric type doesnt match its content", http.StatusBadRequest)
 		return
 	}
 
 	_, err = m.metricsService.UpdateMetrics(r.Context(), metrics)
 	if err != nil {
+		m.logger.Error("Value update error", "err", err)
 		http.Error(w, fmt.Sprintf("Value update error: %s", err), http.StatusInternalServerError)
 		return
+	}
+
+	_, err = w.Write([]byte("{}"))
+	if err != nil {
+		m.logger.Error("failed to write response", "err", err)
+		http.Error(w, fmt.Sprintf("failed to write response %s", err), http.StatusInternalServerError)
 	}
 }
