@@ -1,10 +1,9 @@
 package middleware
 
 import (
+	"log/slog"
 	"net/http"
 	"time"
-
-	"github.com/mikhailpashkov/metrics/internal/handler"
 )
 
 type fetchingInfoResponseWriter struct {
@@ -25,7 +24,8 @@ func (h *fetchingInfoResponseWriter) Write(data []byte) (int, error) {
 }
 
 type loggingHandler struct {
-	handler.MHandler
+	http.Handler
+	logger *slog.Logger
 }
 
 func (h *loggingHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -37,11 +37,11 @@ func (h *loggingHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		size:           0,
 	}
 
-	h.MHandler.ServeHTTP(responseWriter, r)
+	h.Handler.ServeHTTP(responseWriter, r)
 
 	duration := time.Since(startTime)
 
-	h.MHandler.GetLogger().Info("request processed",
+	h.logger.Info("request processed",
 		"url", r.URL.String(),
 		"method", r.Method,
 		"duration", duration,
@@ -50,6 +50,8 @@ func (h *loggingHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	)
 }
 
-func WithLogging(handler handler.MHandler) handler.MHandler {
-	return &loggingHandler{MHandler: handler}
+func WithLogging(logger *slog.Logger) func(next http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return &loggingHandler{next, logger}
+	}
 }

@@ -24,12 +24,6 @@ func NewUpdateMetricsHandler(logger *slog.Logger, metricsService service.Metrics
 	}
 }
 
-func (m *UpdateMetricsHandler) GetLogger() *slog.Logger { return m.logger }
-
-func (m *UpdateMetricsHandler) GetUrlPatterns() []string {
-	return []string{"/update", "/update/"}
-}
-
 func (m *UpdateMetricsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	if r.Method != http.MethodPost {

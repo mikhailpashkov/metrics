@@ -23,12 +23,6 @@ func NewGetMetricsHandler(logger *slog.Logger, metricsService service.MetricsSer
 	}
 }
 
-func (m *GetMetricsHandler) GetLogger() *slog.Logger { return m.logger }
-
-func (m *GetMetricsHandler) GetUrlPatterns() []string {
-	return []string{"/value", "/value/"}
-}
-
 func (m *GetMetricsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	if r.Method != http.MethodPost {

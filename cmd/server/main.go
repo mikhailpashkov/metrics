@@ -88,24 +88,21 @@ func main() {
 
 	// Server /////////////////////////
 	logger.Debug("setup server")
-	handlers := []handler.MHandler{
-		handler.NewGetMetricsHandler(logger, metricsService),
-		handler.NewGetMetricsPathParamsHandler(logger, metricsService),
-		handler.NewGetListMetricsHandler(logger, metricsService),
-		handler.NewUpdateMetricsHandler(logger, metricsService),
-		handler.NewUpdateMetricsPathParamsHandler(logger, metricsService),
-	}
-
-	for i, h := range handlers {
-		handlers[i] = middleware.WithLogging(middleware.WithGZIPSupport(h))
-	}
 
 	r := chi.NewRouter()
-	for _, h := range handlers {
-		for _, urlPattern := range h.GetUrlPatterns() {
-			r.Handle(urlPattern, h)
-		}
-	}
+
+	// наверняка, хорошая идея - использовать github.com/go-chi/chi/v5/middleware,
+	// но в учебных целях используем самодельные
+	r.Use(middleware.WithLogging(logger))
+	r.Use(middleware.WithGZIPSupport(logger))
+
+	r.Handle("/", handler.NewMetricsRootHandler(logger, metricsService))
+
+	r.Handle("/value", handler.NewGetMetricsHandler(logger, metricsService))
+	r.Handle("/value/{type}/{name}", handler.NewGetMetricsPathParamsHandler(logger, metricsService))
+
+	r.Handle("/update", handler.NewUpdateMetricsHandler(logger, metricsService))
+	r.Handle("/update/{type}/{name}/{value}", handler.NewUpdateMetricsPathParamsHandler(logger, metricsService))
 
 	err = http.ListenAndServe(addr, r)
 	if err != nil {

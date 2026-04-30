@@ -3,10 +3,9 @@ package middleware
 import (
 	"compress/gzip"
 	"io"
+	"log/slog"
 	"net/http"
 	"strings"
-
-	"github.com/mikhailpashkov/metrics/internal/handler"
 )
 
 type gzipWriter struct {
@@ -15,7 +14,8 @@ type gzipWriter struct {
 }
 
 type gzipHandler struct {
-	handler.MHandler
+	http.Handler
+	logger *slog.Logger
 }
 
 func (g gzipWriter) Write(b []byte) (int, error) {
@@ -24,15 +24,15 @@ func (g gzipWriter) Write(b []byte) (int, error) {
 
 func (h *gzipHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if !strings.Contains(r.Header.Get("Accept-Encoding"), "gzip") {
-		h.GetLogger().Debug("skip gzip encoding: not supported on client",
+		h.logger.Debug("skip gzip encoding: not supported on client",
 			"url", r.URL,
 			"host", r.Host,
 		)
-		h.MHandler.ServeHTTP(w, r)
+		h.Handler.ServeHTTP(w, r)
 		return
 	}
 
-	h.GetLogger().Debug("gzip encoding is supported")
+	h.logger.Debug("gzip encoding is supported")
 
 	gz, err := gzip.NewWriterLevel(w, gzip.BestSpeed)
 	if err != nil {
@@ -42,9 +42,11 @@ func (h *gzipHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	defer gz.Close()
 
 	w.Header().Set("Content-Encoding", "gzip")
-	h.MHandler.ServeHTTP(gzipWriter{ResponseWriter: w, Writer: gz}, r)
+	h.Handler.ServeHTTP(gzipWriter{ResponseWriter: w, Writer: gz}, r)
 }
 
-func WithGZIPSupport(handler handler.MHandler) handler.MHandler {
-	return &gzipHandler{MHandler: handler}
+func WithGZIPSupport(logger *slog.Logger) func(next http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return &gzipHandler{next, logger}
+	}
 }

@@ -22,12 +22,6 @@ func NewUpdateMetricsPathParamsHandler(logger *slog.Logger, metricsService servi
 	}
 }
 
-func (m *UpdateMetricsPathParamsHandler) GetLogger() *slog.Logger { return m.logger }
-
-func (m *UpdateMetricsPathParamsHandler) GetUrlPatterns() []string {
-	return []string{"/update/{type}/{name}/{value}"}
-}
-
 func (m *UpdateMetricsPathParamsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
@@ -62,7 +56,7 @@ func (m *UpdateMetricsPathParamsHandler) ServeHTTP(w http.ResponseWriter, r *htt
 			return
 		}
 
-		m.GetLogger().Debug(
+		m.logger.Debug(
 			"metric updated",
 			"type", mType,
 			"name", name,
@@ -82,7 +76,7 @@ func (m *UpdateMetricsPathParamsHandler) ServeHTTP(w http.ResponseWriter, r *htt
 			return
 		}
 
-		m.GetLogger().Debug(
+		m.logger.Debug(
 			"metric updated",
 			"type", mType,
 			"name", name,

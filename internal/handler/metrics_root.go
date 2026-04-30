@@ -10,7 +10,7 @@ import (
 	"github.com/mikhailpashkov/metrics/internal/service"
 )
 
-type GetListMetricsHandler struct {
+type MetricsRootHandler struct {
 	logger         *slog.Logger
 	metricsService service.MetricsService
 }
@@ -48,20 +48,14 @@ const htmlTemplate = `<html>
 </html>
 `
 
-func NewGetListMetricsHandler(logger *slog.Logger, metricsService service.MetricsService) *GetListMetricsHandler {
-	return &GetListMetricsHandler{
+func NewMetricsRootHandler(logger *slog.Logger, metricsService service.MetricsService) *MetricsRootHandler {
+	return &MetricsRootHandler{
 		logger:         logger,
 		metricsService: metricsService,
 	}
 }
 
-func (m *GetListMetricsHandler) GetLogger() *slog.Logger { return m.logger }
-
-func (m *GetListMetricsHandler) GetUrlPatterns() []string {
-	return []string{"/"}
-}
-
-func (m *GetListMetricsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (m *MetricsRootHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
 		return
