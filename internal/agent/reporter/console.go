@@ -7,23 +7,23 @@ import (
 	models "github.com/mikhailpashkov/metrics/internal/model"
 )
 
-type ConsoleReporter struct {
+type LogReporter struct {
 	logger *slog.Logger
 }
 
-func NewConsoleReporter(logger *slog.Logger) MetricsReporter {
-	return &ConsoleReporter{logger: logger}
+func NewLogReporter(logger *slog.Logger) MetricsReporter {
+	return &LogReporter{logger: logger}
 }
 
-func (r *ConsoleReporter) GetLogger() *slog.Logger {
+func (r *LogReporter) GetLogger() *slog.Logger {
 	return r.logger
 }
 
-func (r *ConsoleReporter) SendMetrics(metrics *models.Metrics) error {
+func (r *LogReporter) SendMetrics(metrics *models.Metrics) error {
 	marshal, err := json.Marshal(metrics)
 	if err != nil {
 		return err
 	}
-	r.GetLogger().Info(string(marshal))
+	r.GetLogger().Info("Send metrics to log..", "payload", string(marshal))
 	return nil
 }

@@ -24,7 +24,7 @@ func main() {
 	var addr string
 	var pollInterval int
 	var reportInterval int
-	var standaloneMode bool
+	var reportToLog bool
 
 	utils.GetParams([]utils.Param{
 		&utils.StringParam{
@@ -49,11 +49,11 @@ func main() {
 			ValueConsumer: func(v int) { reportInterval = v },
 		},
 		&utils.BoolParam{
-			EnvName:       "STANDALONE_MODE",
-			FlagName:      "s",
-			FlagUsage:     "standalone mode - run without sending data to server",
+			EnvName:       "REPORT_TO_LOG",
+			FlagName:      "report-to-log",
+			FlagUsage:     "report-to-log - run without sending data to server. send data to logger",
 			Default:       false,
-			ValueConsumer: func(v bool) { standaloneMode = v },
+			ValueConsumer: func(v bool) { reportToLog = v },
 		},
 	})
 
@@ -61,7 +61,7 @@ func main() {
 		"addr", addr,
 		"pollInterval", pollInterval,
 		"reportInterval", reportInterval,
-		"standaloneMode", standaloneMode,
+		"reportToLog", reportToLog,
 	)
 
 	metricsRepository := repository.NewMetricsMemoryRepository()
@@ -69,8 +69,8 @@ func main() {
 	metricsService := service.NewMetricsService(metricsRepository, backupRepository)
 
 	var metricsReporter reporter.MetricsReporter
-	if standaloneMode {
-		metricsReporter = reporter.NewConsoleReporter(logger)
+	if reportToLog {
+		metricsReporter = reporter.NewLogReporter(logger)
 	} else {
 		metricsReporter = reporter.NewBackendReporter(addr, logger)
 	}
