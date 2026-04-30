@@ -14,7 +14,6 @@ import (
 )
 
 func main() {
-
 	opts := &slog.HandlerOptions{
 		Level: slog.LevelDebug,
 	}
@@ -25,6 +24,7 @@ func main() {
 	var addr string
 	var pollInterval int
 	var reportInterval int
+	var standaloneMode bool
 
 	utils.GetParams([]utils.Param{
 		&utils.StringParam{
@@ -48,18 +48,32 @@ func main() {
 			Default:       10,
 			ValueConsumer: func(v int) { reportInterval = v },
 		},
+		&utils.BoolParam{
+			EnvName:       "STANDALONE_MODE",
+			FlagName:      "s",
+			FlagUsage:     "standalone mode - run without sending data to server",
+			Default:       false,
+			ValueConsumer: func(v bool) { standaloneMode = v },
+		},
 	})
 
-	logger.Info("params", "addr", addr)
-	logger.Info("params", "pollInterval", pollInterval)
-	logger.Info("params", "reportInterval", reportInterval)
+	logger.Info("params",
+		"addr", addr,
+		"pollInterval", pollInterval,
+		"reportInterval", reportInterval,
+		"standaloneMode", standaloneMode,
+	)
 
 	metricsRepository := repository.NewMetricsMemoryRepository()
 	backupRepository := &repository.StubBackupRepository{}
 	metricsService := service.NewMetricsService(metricsRepository, backupRepository)
 
-	//consoleReporter := reporter.NewConsoleReporter()
-	backendReporter := reporter.NewBackendReporter(addr, logger)
+	var metricsReporter reporter.MetricsReporter
+	if standaloneMode {
+		metricsReporter = reporter.NewConsoleReporter(logger)
+	} else {
+		metricsReporter = reporter.NewBackendReporter(addr, logger)
+	}
 
 	memStatsPoller := poller.NewMemStatsPoller()
 	pollCountPoller := poller.NewPollCountPoller()
@@ -72,7 +86,7 @@ func main() {
 			pollCountPoller,
 			randomValuePoller,
 		},
-		backendReporter,
+		metricsReporter,
 		&agent.MetricsCollectorParams{
 			PollInterval:   time.Duration(pollInterval) * time.Second,
 			ReportInterval: time.Duration(reportInterval) * time.Second,
