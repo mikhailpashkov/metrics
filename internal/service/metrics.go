@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"sort"
 	"time"
 
@@ -23,13 +24,15 @@ type MetricsService interface {
 }
 
 type MetricsServiceImpl struct {
+	logger            *slog.Logger
 	metricsRepository repository.MetricsRepository
 	backupRepository  repository.BackupRepository
 	backupCallback    func(ctx context.Context)
 }
 
-func NewMetricsService(metricsStorage repository.MetricsRepository, backupRepository repository.BackupRepository) MetricsService {
+func NewMetricsService(logger *slog.Logger, metricsStorage repository.MetricsRepository, backupRepository repository.BackupRepository) MetricsService {
 	return &MetricsServiceImpl{
+		logger:            logger,
 		metricsRepository: metricsStorage,
 		backupRepository:  backupRepository,
 		backupCallback:    func(ctx context.Context) {},
@@ -103,7 +106,7 @@ func (ms *MetricsServiceImpl) GetAllAccumulated(ctx context.Context) ([]*models.
 			var accumulatedDelta int64
 			for _, record := range groupedRecords {
 				if record.Delta == nil {
-					fmt.Println("[ERR] counter delta is nil")
+					ms.logger.Warn("counter delta is nil", "id", record.ID, "name", record.Name)
 					continue
 				}
 				accumulatedDelta += *record.Delta
@@ -162,7 +165,11 @@ func (ms *MetricsServiceImpl) Restore(ctx context.Context) error {
 			continue
 		}
 		savedIds = append(savedIds, saved.ID)
-		fmt.Printf("Restored: %d %s %s\n", saved.ID, saved.Type, saved.Name)
+		ms.logger.Debug("Restored",
+			"id", saved.ID,
+			"type", saved.Type,
+			"name", saved.Name,
+		)
 	}
 
 	if len(errs) > 0 {
@@ -191,7 +198,7 @@ func (ms *MetricsServiceImpl) SetupBackup(ctx context.Context, storeInterval int
 		for {
 			select {
 			case <-ctx.Done():
-				fmt.Println("stopping goroutine:", ctx.Err())
+				ms.logger.InfoContext(ctx, "backup stopped", "why", ctx.Err())
 				return
 			case <-ticker.C:
 				ms.doBackup(ctx)
@@ -203,10 +210,10 @@ func (ms *MetricsServiceImpl) SetupBackup(ctx context.Context, storeInterval int
 }
 
 func (ms *MetricsServiceImpl) doBackup(ctx context.Context) {
-	fmt.Println("do backup")
+	ms.logger.Info("backup started")
 	metrics, err := ms.GetAllAccumulated(ctx)
 	if err != nil {
-		fmt.Println("[ERR] failed to GetAllAccumulated metrics ", err)
+		ms.logger.Error("get metrics failed", "err", err)
 		return
 	}
 
@@ -222,7 +229,8 @@ func (ms *MetricsServiceImpl) doBackup(ctx context.Context) {
 
 	err = ms.backupRepository.SaveAll(ctx, backupMetrics)
 	if err != nil {
-		fmt.Println("[ERR] failed to backup metrics ", err)
+		ms.logger.Error("save metrics failed", "err", err)
 		return
 	}
+	ms.logger.Debug("backup finished")
 }

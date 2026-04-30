@@ -7,6 +7,7 @@ import (
 	"os"
 
 	"github.com/go-chi/chi/v5"
+	_const "github.com/mikhailpashkov/metrics/internal/config/const"
 	"github.com/mikhailpashkov/metrics/internal/handler"
 	"github.com/mikhailpashkov/metrics/internal/handler/middleware"
 	"github.com/mikhailpashkov/metrics/internal/repository"
@@ -70,7 +71,11 @@ func main() {
 	logger.Debug("init dependencies")
 	metricsRepository := repository.NewMetricsMemoryRepository()
 	backupRepository := repository.NewFileBackupRepository(fileStoragePath)
-	metricsService := service.NewMetricsService(metricsRepository, backupRepository)
+	metricsService := service.NewMetricsService(
+		logger.With(_const.LoggerNameKey, "middleware.MetricsService"),
+		metricsRepository,
+		backupRepository,
+	)
 
 	// Backup /////////////////////////
 	if restore {
@@ -93,16 +98,31 @@ func main() {
 
 	// наверняка, хорошая идея - использовать github.com/go-chi/chi/v5/middleware,
 	// но в учебных целях используем самодельные
-	r.Use(middleware.WithLogging(logger))
-	r.Use(middleware.WithGZIPSupport(logger))
+	r.Use(middleware.WithLogging(logger.With(_const.LoggerNameKey, "middleware.WithLogging")))
+	r.Use(middleware.WithGZIPSupport(logger.With(_const.LoggerNameKey, "middleware.WithGZIPSupport")))
 
-	r.Handle("/", handler.NewMetricsRootHandler(logger, metricsService))
+	r.Handle("/", handler.NewMetricsRootHandler(
+		logger.With(_const.LoggerNameKey, "handler.MetricsRootHandler"),
+		metricsService,
+	))
 
-	r.Handle("/value", handler.NewGetMetricsHandler(logger, metricsService))
-	r.Handle("/value/{type}/{name}", handler.NewGetMetricsPathParamsHandler(logger, metricsService))
+	r.Handle("/value", handler.NewGetMetricsHandler(
+		logger.With(_const.LoggerNameKey, "handler.GetMetricsHandler"),
+		metricsService,
+	))
+	r.Handle("/value/{type}/{name}", handler.NewGetMetricsPathParamsHandler(
+		logger.With(_const.LoggerNameKey, "handler.GetMetricsPathParamsHandler"),
+		metricsService,
+	))
 
-	r.Handle("/update", handler.NewUpdateMetricsHandler(logger, metricsService))
-	r.Handle("/update/{type}/{name}/{value}", handler.NewUpdateMetricsPathParamsHandler(logger, metricsService))
+	r.Handle("/update", handler.NewUpdateMetricsHandler(
+		logger.With(_const.LoggerNameKey, "handler.UpdateMetricsHandler"),
+		metricsService,
+	))
+	r.Handle("/update/{type}/{name}/{value}", handler.NewUpdateMetricsPathParamsHandler(
+		logger.With(_const.LoggerNameKey, "handler.UpdateMetricsPathParamsHandler"),
+		metricsService,
+	))
 
 	err = http.ListenAndServe(addr, r)
 	if err != nil {
