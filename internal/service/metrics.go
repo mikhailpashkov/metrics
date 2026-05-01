@@ -2,7 +2,6 @@ package service
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"log/slog"
 	"sort"
@@ -18,29 +17,23 @@ type MetricsService interface {
 	UpdateGauge(ctx context.Context, name string, value float64) (*models.Metrics, error)
 	GetAllRecords(ctx context.Context) ([]*models.Metrics, error)
 	GetAllAccumulated(ctx context.Context) ([]*models.Metrics, error)
+	Delete(ctx context.Context, id int64) error
 	DeleteAll(ctx context.Context) error
-	Restore(ctx context.Context) error
-	SetupBackup(ctx context.Context, storeInterval int) error
 }
 
 type MetricsServiceImpl struct {
 	logger            *slog.Logger
 	metricsRepository repository.MetricsRepository
-	backupRepository  repository.BackupRepository
-	backupCallback    func(ctx context.Context)
 }
 
-func NewMetricsService(logger *slog.Logger, metricsStorage repository.MetricsRepository, backupRepository repository.BackupRepository) MetricsService {
+func NewMetricsService(logger *slog.Logger, metricsStorage repository.MetricsRepository) MetricsService {
 	return &MetricsServiceImpl{
 		logger:            logger,
 		metricsRepository: metricsStorage,
-		backupRepository:  backupRepository,
-		backupCallback:    func(ctx context.Context) {},
 	}
 }
 
 func (ms *MetricsServiceImpl) UpdateMetrics(ctx context.Context, metricsModel *models.Metrics) (*models.Metrics, error) {
-	defer ms.backupCallback(ctx)
 	savedMetrics, err := ms.metricsRepository.Save(ctx, metricsModel)
 	if err != nil {
 		return nil, err
@@ -137,100 +130,18 @@ func (ms *MetricsServiceImpl) GetAllAccumulated(ctx context.Context) ([]*models.
 	return result, nil
 }
 
+func (ms *MetricsServiceImpl) Delete(ctx context.Context, id int64) error {
+	err := ms.metricsRepository.DeleteById(ctx, id)
+	if err != nil {
+		return fmt.Errorf("failed to delete metrics record with id %d: %w", id, err)
+	}
+	return nil
+}
+
 func (ms *MetricsServiceImpl) DeleteAll(ctx context.Context) error {
-	defer ms.backupCallback(ctx)
-	return ms.metricsRepository.DeleteAll(ctx)
-}
-
-func (ms *MetricsServiceImpl) Restore(ctx context.Context) error {
-	restoredMetrics, err := ms.backupRepository.FindAll(ctx)
+	err := ms.metricsRepository.DeleteAll(ctx)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to delete all metrics: %w", err)
 	}
-
-	savedIds := make([]int64, 0, len(restoredMetrics))
-	errs := make([]error, 0)
-	for _, bMetrics := range restoredMetrics {
-		toSave := &models.Metrics{
-			ID:    -1,
-			Type:  bMetrics.Type,
-			Name:  bMetrics.ID,
-			Delta: bMetrics.Delta,
-			Value: bMetrics.Value,
-			TS:    time.Now().UnixMilli(),
-		}
-		saved, ferr := ms.metricsRepository.Save(ctx, toSave)
-		if ferr != nil {
-			errs = append(errs, ferr)
-			continue
-		}
-		savedIds = append(savedIds, saved.ID)
-		ms.logger.Debug("Restored",
-			"id", saved.ID,
-			"type", saved.Type,
-			"name", saved.Name,
-		)
-	}
-
-	if len(errs) > 0 {
-		for _, id := range savedIds {
-			ferr := ms.metricsRepository.DeleteById(ctx, id)
-			if ferr != nil {
-				errs = append(errs, ferr)
-			}
-		}
-		return errors.Join(errs...)
-	}
-
 	return nil
-}
-
-func (ms *MetricsServiceImpl) SetupBackup(ctx context.Context, storeInterval int) error {
-	if storeInterval == 0 {
-		ms.backupCallback = ms.doBackup
-		return nil
-	}
-
-	go func() {
-		ticker := time.NewTicker(time.Duration(storeInterval) * time.Second)
-		defer ticker.Stop()
-
-		for {
-			select {
-			case <-ctx.Done():
-				ms.logger.InfoContext(ctx, "backup stopped", "why", ctx.Err())
-				return
-			case <-ticker.C:
-				ms.doBackup(ctx)
-			}
-		}
-	}()
-
-	return nil
-}
-
-func (ms *MetricsServiceImpl) doBackup(ctx context.Context) {
-	ms.logger.Info("backup started")
-	metrics, err := ms.GetAllAccumulated(ctx)
-	if err != nil {
-		ms.logger.Error("get metrics failed", "err", err)
-		return
-	}
-
-	backupMetrics := make([]*models.BackupMetrics, 0, len(metrics))
-	for _, m := range metrics {
-		backupMetrics = append(backupMetrics, &models.BackupMetrics{
-			ID:    m.Name,
-			Type:  m.Type,
-			Delta: m.Delta,
-			Value: m.Value,
-		})
-	}
-
-	err = ms.backupRepository.SaveAll(ctx, backupMetrics)
-	if err != nil {
-		ms.logger.Error("save metrics failed", "err", err)
-		return
-	}
-	ms.logger.Debug("backup finished")
 }

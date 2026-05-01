@@ -16,16 +16,6 @@ type BackupRepository interface {
 	SaveAll(ctx context.Context, metrics []*models.BackupMetrics) error
 }
 
-type StubBackupRepository struct{}
-
-func (*StubBackupRepository) FindAll(_ context.Context) ([]*models.BackupMetrics, error) {
-	return []*models.BackupMetrics{}, nil
-}
-
-func (*StubBackupRepository) SaveAll(_ context.Context, _ []*models.BackupMetrics) error {
-	return nil
-}
-
 type FileBackupRepository struct {
 	filePath string
 	mu       sync.RWMutex

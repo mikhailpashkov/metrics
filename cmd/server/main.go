@@ -72,21 +72,25 @@ func main() {
 	metricsRepository := repository.NewMetricsMemoryRepository()
 	backupRepository := repository.NewFileBackupRepository(fileStoragePath)
 	metricsService := service.NewMetricsService(
-		logger.With(_const.LoggerNameKey, "middleware.MetricsService"),
+		logger.With(_const.LoggerNameKey, "service.MetricsService"),
 		metricsRepository,
+	)
+	backupService := service.NewBackupService(
+		logger.With(_const.LoggerNameKey, "service.BackupService"),
+		metricsService,
 		backupRepository,
 	)
 
 	// Backup /////////////////////////
 	if restore {
 		logger.Debug("restore from backup")
-		err := metricsService.Restore(context.Background())
+		err := backupService.Restore(context.Background())
 		if err != nil {
 			panic(err)
 		}
 	}
 	logger.Debug("setup runtime backup")
-	err := metricsService.SetupBackup(context.Background(), storeInterval)
+	err := backupService.SetupBackup(context.Background(), storeInterval)
 	if err != nil {
 		panic(err)
 	}
@@ -96,7 +100,7 @@ func main() {
 
 	r := chi.NewRouter()
 
-	// наверняка, хорошая идея - использовать github.com/go-chi/chi/v5/middleware,
+	// наверняка, хорошей идеей будет использовать github.com/go-chi/chi/v5/middleware,
 	// но в учебных целях используем самодельные
 	r.Use(middleware.WithLogging(logger.With(_const.LoggerNameKey, "middleware.WithLogging")))
 	r.Use(middleware.WithGZIPSupport(logger.With(_const.LoggerNameKey, "middleware.WithGZIPSupport")))

@@ -16,7 +16,7 @@ import (
 
 func TestUpdateMetricsHandler_ServeHTTP(t *testing.T) {
 	repo := repository.NewMetricsMemoryRepository()
-	svc := service.NewMetricsService(slog.Default(), repo, &repository.StubBackupRepository{})
+	svc := service.NewMetricsService(slog.Default(), repo)
 	handler := NewUpdateMetricsPathParamsHandler(slog.Default(), svc)
 
 	mux := http.NewServeMux()
