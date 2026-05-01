@@ -27,7 +27,7 @@ type MetricsMemoryRepository struct {
 	errMetricsIsNil error
 }
 
-func NewMetricsMemoryRepository() MetricsRepository {
+func NewMetricsMemoryRepository() *MetricsMemoryRepository {
 	return &MetricsMemoryRepository{
 		storage:         make(map[int64]*models.Metrics),
 		lastId:          -1,

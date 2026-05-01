@@ -22,7 +22,7 @@ type FileBackupRepository struct {
 	mu       sync.RWMutex
 }
 
-func NewFileBackupRepository(filePath string) BackupRepository {
+func NewFileBackupRepository(filePath string) *FileBackupRepository {
 	return &FileBackupRepository{filePath: filePath}
 }
 

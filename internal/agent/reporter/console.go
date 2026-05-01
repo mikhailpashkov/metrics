@@ -12,7 +12,7 @@ type LogReporter struct {
 	logger *slog.Logger
 }
 
-func NewLogReporter(logger *slog.Logger) MetricsReporter {
+func NewLogReporter(logger *slog.Logger) *LogReporter {
 	return &LogReporter{logger: logger}
 }
 

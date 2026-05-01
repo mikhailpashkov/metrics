@@ -28,7 +28,7 @@ type MetricsServiceImpl struct {
 	eventService      EventService
 }
 
-func NewMetricsService(logger *slog.Logger, metricsRepository repository.MetricsRepository, eventService EventService) MetricsService {
+func NewMetricsService(logger *slog.Logger, metricsRepository repository.MetricsRepository, eventService EventService) *MetricsServiceImpl {
 	return &MetricsServiceImpl{
 		logger:            logger,
 		metricsRepository: metricsRepository,
