@@ -8,6 +8,7 @@ import (
 	"github.com/mikhailpashkov/metrics/internal/agent"
 	"github.com/mikhailpashkov/metrics/internal/agent/poller"
 	"github.com/mikhailpashkov/metrics/internal/agent/reporter"
+	_const "github.com/mikhailpashkov/metrics/internal/config/const"
 	"github.com/mikhailpashkov/metrics/internal/repository"
 	"github.com/mikhailpashkov/metrics/internal/service"
 	"github.com/mikhailpashkov/metrics/internal/utils"
@@ -65,14 +66,14 @@ func main() {
 	)
 
 	metricsRepository := repository.NewMetricsMemoryRepository()
-	eventService := service.NewInMemoryEventService(logger)
-	metricsService := service.NewMetricsService(logger, metricsRepository, eventService)
+	eventService := service.NewInMemoryEventService(logger.With(_const.LoggerNameKey, "service.InMemoryEventService"))
+	metricsService := service.NewMetricsService(logger.With(_const.LoggerNameKey, "service.MetricsService"), metricsRepository, eventService)
 
 	var metricsReporter reporter.MetricsReporter
 	if reportToLog {
-		metricsReporter = reporter.NewLogReporter(logger)
+		metricsReporter = reporter.NewLogReporter(logger.With(_const.LoggerNameKey, "reporter.LogReporter"))
 	} else {
-		metricsReporter = reporter.NewBackendReporter(addr, logger)
+		metricsReporter = reporter.NewBackendReporter(addr, logger.With(_const.LoggerNameKey, "reporter.BackendReporter"))
 	}
 
 	memStatsPoller := poller.NewMemStatsPoller()
