@@ -89,13 +89,15 @@ func main() {
 		logger.Debug("restore from backup")
 		err := backupService.Restore(context.Background())
 		if err != nil {
-			panic(err)
+			logger.Error("failed to restore from backup", "err", err)
+			os.Exit(1)
 		}
 	}
 	logger.Debug("setup runtime backup")
 	err := backupService.SetupBackup(context.Background(), storeInterval)
 	if err != nil {
-		panic(err)
+		logger.Error("failed to setup backup", "err", err)
+		os.Exit(1)
 	}
 
 	// Server /////////////////////////
@@ -134,6 +136,6 @@ func main() {
 	err = http.ListenAndServe(addr, r)
 	if err != nil {
 		logger.Error("failed to start server", "error", err)
-		panic(err)
+		os.Exit(1)
 	}
 }
