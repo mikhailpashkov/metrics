@@ -60,7 +60,8 @@ func (r *FileBackupRepository) SaveAll(ctx context.Context, metrics []*models.Ba
 
 	sort.Slice(metrics, func(i, j int) bool { return metrics[i].ID > metrics[j].ID })
 
-	file, err := os.OpenFile(r.filePath, os.O_WRONLY|os.O_CREATE, 0644)
+	tempFilePath := r.filePath + ".tmp"
+	file, err := os.OpenFile(tempFilePath, os.O_WRONLY|os.O_CREATE, 0644)
 	if err != nil {
 		return err
 	}
@@ -68,9 +69,16 @@ func (r *FileBackupRepository) SaveAll(ctx context.Context, metrics []*models.Ba
 
 	enc := json.NewEncoder(file)
 	enc.SetIndent("", "  ")
+
 	err = enc.Encode(metrics)
 	if err != nil {
 		return err
 	}
+
+	err = os.Rename(tempFilePath, r.filePath)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
