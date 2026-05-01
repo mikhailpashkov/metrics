@@ -81,6 +81,7 @@ func main() {
 		logger.With(_const.LoggerNameKey, "service.BackupService"),
 		metricsService,
 		backupRepository,
+		eventService,
 	)
 
 	// Backup /////////////////////////

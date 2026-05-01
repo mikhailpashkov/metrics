@@ -53,13 +53,13 @@ func (es *InMemoryEventService) Notify(event *models.Event) {
 	)
 	for _, sub := range es.subscribers[event.Key] {
 		go func() {
-			es.logger.Debug("starting processing callback",
+			es.logger.Debug("start executing callback",
 				"event_id", event.ID,
 				"event_key", event.Key,
 				"subscriber_name", sub.Name,
 			)
 			sub.Callback(*event)
-			es.logger.Debug("processing callback finished",
+			es.logger.Debug("callback execution finished",
 				"event_id", event.ID,
 				"event_key", event.Key,
 				"subscriber_name", sub.Name,

@@ -19,17 +19,20 @@ type BackupServiceImpl struct {
 	logger           *slog.Logger
 	metricsService   MetricsService
 	backupRepository repository.BackupRepository
+	eventService     EventService
 }
 
 func NewBackupService(
 	logger *slog.Logger,
 	metricsService MetricsService,
 	backupRepository repository.BackupRepository,
+	eventService EventService,
 ) *BackupServiceImpl {
 	return &BackupServiceImpl{
 		logger:           logger,
 		metricsService:   metricsService,
 		backupRepository: backupRepository,
+		eventService:     eventService,
 	}
 }
 
@@ -77,11 +80,28 @@ func (bs *BackupServiceImpl) Restore(ctx context.Context) error {
 }
 
 func (bs *BackupServiceImpl) SetupBackup(ctx context.Context, storeInterval int) error {
+	if storeInterval < 0 {
+		return errors.New("store interval cannot be negative")
+	}
 	if storeInterval == 0 {
-		// todo: делать backup при изменениях
+		bs.eventDrivenBackup(ctx)
 		return nil
 	}
+	bs.periodicBackup(ctx, storeInterval)
+	return nil
+}
 
+func (bs *BackupServiceImpl) eventDrivenBackup(ctx context.Context) {
+	subscriber := &models.EventSubscriber{
+		Name:     "backupService",
+		Callback: func(_ models.Event) { bs.doBackup(ctx) },
+	}
+
+	bs.eventService.Subscribe(models.MetricsDeletedEvent, subscriber)
+	bs.eventService.Subscribe(models.MetricsUpdatedEvent, subscriber)
+}
+
+func (bs *BackupServiceImpl) periodicBackup(ctx context.Context, storeInterval int) {
 	go func() {
 		ticker := time.NewTicker(time.Duration(storeInterval) * time.Second)
 		defer ticker.Stop()
@@ -96,8 +116,6 @@ func (bs *BackupServiceImpl) SetupBackup(ctx context.Context, storeInterval int)
 			}
 		}
 	}()
-
-	return nil
 }
 
 func (bs *BackupServiceImpl) doBackup(ctx context.Context) {
