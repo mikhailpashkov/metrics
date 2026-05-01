@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"os"
 	"sort"
@@ -63,7 +64,7 @@ func (r *FileBackupRepository) SaveAll(ctx context.Context, metrics []*models.Ba
 	tempFilePath := r.filePath + ".tmp"
 	file, err := os.OpenFile(tempFilePath, os.O_WRONLY|os.O_CREATE, 0644)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to open temp file: %w", err)
 	}
 	defer file.Close()
 
@@ -72,12 +73,12 @@ func (r *FileBackupRepository) SaveAll(ctx context.Context, metrics []*models.Ba
 
 	err = enc.Encode(metrics)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to encode metrics: %w", err)
 	}
 
 	err = os.Rename(tempFilePath, r.filePath)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to replace target file with temp file: %w", err)
 	}
 
 	return nil

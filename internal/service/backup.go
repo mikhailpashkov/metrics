@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
 	"time"
 
@@ -39,7 +40,7 @@ func NewBackupService(
 func (bs *BackupServiceImpl) Restore(ctx context.Context) error {
 	restoredMetrics, err := bs.backupRepository.FindAll(ctx)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to get backup records: %w", err)
 	}
 
 	savedIds := make([]int64, 0, len(restoredMetrics))

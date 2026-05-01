@@ -2,6 +2,7 @@ package reporter
 
 import (
 	"encoding/json"
+	"fmt"
 	"log/slog"
 
 	models "github.com/mikhailpashkov/metrics/internal/model"
@@ -22,7 +23,7 @@ func (r *LogReporter) GetLogger() *slog.Logger {
 func (r *LogReporter) SendMetrics(metrics *models.Metrics) error {
 	marshal, err := json.Marshal(metrics)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to marshal metrics: %w", err)
 	}
 	r.GetLogger().Info("Send metrics to log..", "payload", string(marshal))
 	return nil
