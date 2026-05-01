@@ -7,6 +7,7 @@ import (
 	"os"
 
 	"github.com/go-chi/chi/v5"
+	chi_middleware "github.com/go-chi/chi/v5/middleware"
 	_const "github.com/mikhailpashkov/metrics/internal/config/const"
 	"github.com/mikhailpashkov/metrics/internal/handler"
 	"github.com/mikhailpashkov/metrics/internal/handler/middleware"
@@ -109,6 +110,9 @@ func main() {
 	// но в учебных целях используем самодельные
 	r.Use(middleware.WithLogging(logger.With(_const.LoggerNameKey, "middleware.WithLogging")))
 	r.Use(middleware.WithGZIPSupport(logger.With(_const.LoggerNameKey, "middleware.WithGZIPSupport")))
+
+	// для фикса автотестов в iter7: там, зачем-то, в конце слеши приделали на клиенте
+	r.Use(chi_middleware.StripSlashes)
 
 	r.Handle("/", handler.NewMetricsRootHandler(
 		logger.With(_const.LoggerNameKey, "handler.MetricsRootHandler"),
