@@ -65,7 +65,8 @@ func main() {
 	)
 
 	metricsRepository := repository.NewMetricsMemoryRepository()
-	metricsService := service.NewMetricsService(logger, metricsRepository)
+	eventService := service.NewInMemoryEventService(logger)
+	metricsService := service.NewMetricsService(logger, metricsRepository, eventService)
 
 	var metricsReporter reporter.MetricsReporter
 	if reportToLog {
