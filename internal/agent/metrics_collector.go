@@ -2,7 +2,8 @@ package agent
 
 import (
 	"context"
-	"fmt"
+	"log/slog"
+	"os"
 	"time"
 
 	"github.com/mikhailpashkov/metrics/internal/agent/poller"
@@ -19,6 +20,7 @@ type MetricsCollectorParams struct {
 }
 
 type MetricsCollector struct {
+	logger   *slog.Logger
 	service  service.MetricsService
 	pollers  []poller.MetricsPoller
 	reporter reporter.MetricsReporter
@@ -26,12 +28,14 @@ type MetricsCollector struct {
 }
 
 func NewMetricsCollector(
+	logger *slog.Logger,
 	service service.MetricsService,
 	pollers []poller.MetricsPoller,
 	reporter reporter.MetricsReporter,
 	params *MetricsCollectorParams,
 ) *MetricsCollector {
 	return &MetricsCollector{
+		logger:   logger,
 		service:  service,
 		pollers:  pollers,
 		reporter: reporter,
@@ -51,7 +55,7 @@ func (m *MetricsCollector) Start() {
 			for _, metricsPoller := range m.pollers {
 				metrics, err := metricsPoller.GetMetrics()
 				if err != nil {
-					fmt.Println("[ERR] Error polling metrics", err)
+					m.logger.Error("Error polling metrics", "err", err)
 					continue
 				}
 				for _, metric := range metrics {
@@ -66,7 +70,7 @@ func (m *MetricsCollector) Start() {
 		for metric := range metricsToSave {
 			_, err := m.service.UpdateMetrics(context.Background(), metric)
 			if err != nil {
-				fmt.Println("[ERR] Error updating metrics", metric, err)
+				m.logger.Error("Error updating metrics", "err", err)
 				continue
 			}
 		}
@@ -78,15 +82,16 @@ func (m *MetricsCollector) Start() {
 			time.Sleep(m.params.ReportInterval)
 			accumulated, err := m.service.GetAllAccumulated(context.Background())
 			if err != nil {
-				fmt.Println("[ERR] Error getting all accumulated metrics", err)
+				m.logger.Error("Error getting all accumulated metrics", "err", err)
+				continue
 			}
 			for _, metric := range accumulated {
 				metricsToRecord <- metric
 			}
 			err = m.service.DeleteAll(context.Background())
 			if err != nil {
-				fmt.Println("[ERR] Error deleting all metrics", err)
-				panic(err)
+				slog.Error("Error deleting all metrics", "err", err)
+				os.Exit(1)
 			}
 			go m.params.ReportCallback()
 		}
@@ -96,7 +101,7 @@ func (m *MetricsCollector) Start() {
 		for metric := range metricsToRecord {
 			err := m.reporter.SendMetrics(metric)
 			if err != nil {
-				fmt.Println("[ERR] Error sending metrics to reporter", err)
+				m.logger.Error("Error sending metrics to reporter", "err", err)
 				continue
 			}
 		}

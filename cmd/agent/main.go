@@ -81,6 +81,7 @@ func main() {
 	randomValuePoller := poller.NewRandomValuePoller()
 
 	metricsCollector := agent.NewMetricsCollector(
+		logger.With(_const.LoggerNameKey, "agent.MetricsCollector"),
 		metricsService,
 		[]poller.MetricsPoller{
 			memStatsPoller,
