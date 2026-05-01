@@ -7,6 +7,7 @@ import (
 	"sort"
 	"time"
 
+	"github.com/google/uuid"
 	models "github.com/mikhailpashkov/metrics/internal/model"
 	"github.com/mikhailpashkov/metrics/internal/repository"
 )
@@ -24,12 +25,14 @@ type MetricsService interface {
 type MetricsServiceImpl struct {
 	logger            *slog.Logger
 	metricsRepository repository.MetricsRepository
+	eventService      EventService
 }
 
-func NewMetricsService(logger *slog.Logger, metricsStorage repository.MetricsRepository) MetricsService {
+func NewMetricsService(logger *slog.Logger, metricsRepository repository.MetricsRepository, eventService EventService) MetricsService {
 	return &MetricsServiceImpl{
 		logger:            logger,
-		metricsRepository: metricsStorage,
+		metricsRepository: metricsRepository,
+		eventService:      eventService,
 	}
 }
 
@@ -38,6 +41,8 @@ func (ms *MetricsServiceImpl) UpdateMetrics(ctx context.Context, metricsModel *m
 	if err != nil {
 		return nil, err
 	}
+
+	defer ms.eventService.Notify(&models.Event{ID: uuid.NewString(), Key: models.MetricsUpdatedEvent})
 
 	return savedMetrics, nil
 }
@@ -135,6 +140,9 @@ func (ms *MetricsServiceImpl) Delete(ctx context.Context, id int64) error {
 	if err != nil {
 		return fmt.Errorf("failed to delete metrics record with id %d: %w", id, err)
 	}
+
+	defer ms.eventService.Notify(&models.Event{ID: uuid.NewString(), Key: models.MetricsDeletedEvent})
+
 	return nil
 }
 
@@ -143,5 +151,8 @@ func (ms *MetricsServiceImpl) DeleteAll(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("failed to delete all metrics: %w", err)
 	}
+
+	defer ms.eventService.Notify(&models.Event{ID: uuid.NewString(), Key: models.MetricsDeletedEvent})
+
 	return nil
 }

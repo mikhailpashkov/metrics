@@ -71,9 +71,11 @@ func main() {
 	logger.Debug("init dependencies")
 	metricsRepository := repository.NewMetricsMemoryRepository()
 	backupRepository := repository.NewFileBackupRepository(fileStoragePath)
+	eventService := service.NewInMemoryEventService(logger.With(_const.LoggerNameKey, "service.NewInMemoryEventService"))
 	metricsService := service.NewMetricsService(
 		logger.With(_const.LoggerNameKey, "service.MetricsService"),
 		metricsRepository,
+		eventService,
 	)
 	backupService := service.NewBackupService(
 		logger.With(_const.LoggerNameKey, "service.BackupService"),

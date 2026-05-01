@@ -15,8 +15,9 @@ import (
 )
 
 func TestUpdateMetricsHandler_ServeHTTP(t *testing.T) {
-	repo := repository.NewMetricsMemoryRepository()
-	svc := service.NewMetricsService(slog.Default(), repo)
+	metricsRepository := repository.NewMetricsMemoryRepository()
+	eventService := service.NewInMemoryEventService(slog.Default())
+	svc := service.NewMetricsService(slog.Default(), metricsRepository, eventService)
 	handler := NewUpdateMetricsPathParamsHandler(slog.Default(), svc)
 
 	mux := http.NewServeMux()
@@ -59,7 +60,7 @@ func TestUpdateMetricsHandler_ServeHTTP(t *testing.T) {
 			require.Equal(t, tt.wantStatus, rr.Result().StatusCode)
 
 			if tt.wantStatus == http.StatusOK {
-				metrics, err := repo.FindAll(context.Background())
+				metrics, err := metricsRepository.FindAll(context.Background())
 				require.NoError(t, err)
 				require.NotEmpty(t, metrics)
 
@@ -67,7 +68,7 @@ func TestUpdateMetricsHandler_ServeHTTP(t *testing.T) {
 				require.NoError(t, err)
 				fmt.Println("SAVED METRICS:", string(marshal))
 
-				err = repo.DeleteAll(context.Background())
+				err = metricsRepository.DeleteAll(context.Background())
 				require.NoError(t, err)
 			}
 		})
