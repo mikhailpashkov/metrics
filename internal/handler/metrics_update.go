@@ -1,81 +1,77 @@
 package handler
 
 import (
-	"fmt"
+	"encoding/json"
+	"log/slog"
 	"net/http"
-	"strconv"
 
+	"github.com/mikhailpashkov/metrics/internal/dto"
+	"github.com/mikhailpashkov/metrics/internal/mapper"
 	models "github.com/mikhailpashkov/metrics/internal/model"
 	"github.com/mikhailpashkov/metrics/internal/service"
 )
 
 type UpdateMetricsHandler struct {
+	logger         *slog.Logger
 	metricsService service.MetricsService
 }
 
-func NewUpdateMetricsHandler(metricsService service.MetricsService) *UpdateMetricsHandler {
+func NewUpdateMetricsHandler(logger *slog.Logger, metricsService service.MetricsService) *UpdateMetricsHandler {
 	return &UpdateMetricsHandler{
+		logger:         logger,
 		metricsService: metricsService,
 	}
 }
 
-func (m *UpdateMetricsHandler) GetUrlPattern() string {
-	return "/update/{type}/{name}/{value}"
-}
-
 func (m *UpdateMetricsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
 	if r.Method != http.MethodPost {
+		m.logger.Debug("Method not allowed")
 		http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
 		return
 	}
 
-	mType := r.PathValue("type")
-	name := r.PathValue("name")
-	valueStr := r.PathValue("value")
+	var request dto.UpdateMetricsRequest
 
-	if mType == "" {
-		http.Error(w, "Empty type", http.StatusBadRequest)
+	defer r.Body.Close()
+	err := json.NewDecoder(r.Body).Decode(&request)
+	if err != nil {
+		m.logger.Debug("Error decoding body")
+		http.Error(w, "Invalid request: "+err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	if mType != models.Gauge && mType != models.Counter {
-		http.Error(w, "Invalid type", http.StatusBadRequest)
+	if request.Type == "" {
+		m.logger.Debug("Invalid request: Empty type")
+		http.Error(w, "Invalid request: Empty type", http.StatusBadRequest)
 		return
 	}
 
-	if name == "" {
-		http.Error(w, "Empty name", http.StatusBadRequest)
+	if request.ID == "" {
+		m.logger.Debug("Invalid request: Empty name")
+		http.Error(w, "Invalid request: Empty name", http.StatusBadRequest)
 		return
 	}
 
-	switch mType {
-	case models.Counter:
-		parseInt, err := strconv.ParseInt(valueStr, 10, 64)
-		if err != nil {
-			http.Error(w, fmt.Sprintf("Value conversion error: %s", err), http.StatusBadRequest)
-			return
-		}
+	metrics := mapper.MetricsFromUpdateMetricsRequest(request)
 
-		_, err = m.metricsService.UpdateCounter(r.Context(), name, parseInt)
-		if err != nil {
-			http.Error(w, fmt.Sprintf("Value update error: %s", err), http.StatusInternalServerError)
-			return
-		}
+	isValid := models.IsValidMetrics(metrics)
+	if !isValid {
+		m.logger.Debug("Metric type doesnt match its content")
+		http.Error(w, "Metric type doesnt match its content", http.StatusBadRequest)
+		return
+	}
 
-		fmt.Println("updated ", mType, name, parseInt)
-	case models.Gauge:
-		parseFloat, err := strconv.ParseFloat(valueStr, 64)
-		if err != nil {
-			http.Error(w, fmt.Sprintf("Value conversion error: %s", err), http.StatusBadRequest)
-			return
-		}
+	_, err = m.metricsService.UpdateMetrics(r.Context(), metrics)
+	if err != nil {
+		m.logger.Error("Value update error", "err", err)
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		return
+	}
 
-		_, err = m.metricsService.UpdateGauge(r.Context(), name, parseFloat)
-		if err != nil {
-			http.Error(w, fmt.Sprintf("Value update error: %s", err), http.StatusInternalServerError)
-			return
-		}
-
-		fmt.Println("updated ", mType, name, parseFloat)
+	_, err = w.Write([]byte("{}"))
+	if err != nil {
+		m.logger.Error("failed to write response", "err", err)
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 	}
 }

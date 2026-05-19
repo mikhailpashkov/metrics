@@ -1,8 +1,8 @@
 package main
 
 import (
-	"flag"
-	"fmt"
+	"log/slog"
+	"os"
 	"time"
 
 	"github.com/mikhailpashkov/metrics/internal/agent"
@@ -10,42 +10,91 @@ import (
 	"github.com/mikhailpashkov/metrics/internal/agent/reporter"
 	"github.com/mikhailpashkov/metrics/internal/repository"
 	"github.com/mikhailpashkov/metrics/internal/service"
+	"github.com/mikhailpashkov/metrics/internal/utils"
+)
+
+const (
+	LoggerNameKey = "slog_logger"
 )
 
 func main() {
-	fmt.Println("AGENT")
+	opts := &slog.HandlerOptions{
+		Level: slog.LevelDebug,
+	}
 
-	addr := flag.String("a", "localhost:8080", "backend server address")
-	pollInterval := flag.Int("p", 2, "poll interval in seconds")
-	reportInterval := flag.Int("r", 10, "report interval in seconds")
+	logger := slog.New(slog.NewTextHandler(os.Stdout, opts))
+	logger.Info("AGENT")
 
-	flag.Parse()
+	var addr string
+	var pollInterval int
+	var reportInterval int
+	var reportToLog bool
 
-	fmt.Println("addr", *addr)
-	fmt.Println("pollInterval", *pollInterval)
-	fmt.Println("reportInterval", *reportInterval)
+	utils.GetParams([]utils.Param{
+		&utils.StringParam{
+			EnvName:       "ADDRESS",
+			FlagName:      "a",
+			FlagUsage:     "backend server address",
+			Default:       "localhost:8080",
+			ValueConsumer: func(v string) { addr = v },
+		},
+		&utils.IntParam{
+			EnvName:       "POLL_INTERVAL",
+			FlagName:      "p",
+			FlagUsage:     "poll interval in seconds",
+			Default:       2,
+			ValueConsumer: func(v int) { pollInterval = v },
+		},
+		&utils.IntParam{
+			EnvName:       "REPORT_INTERVAL",
+			FlagName:      "r",
+			FlagUsage:     "report interval in seconds",
+			Default:       10,
+			ValueConsumer: func(v int) { reportInterval = v },
+		},
+		&utils.BoolParam{
+			EnvName:       "REPORT_TO_LOG",
+			FlagName:      "report-to-log",
+			FlagUsage:     "report-to-log - run without sending data to server. send data to logger",
+			Default:       false,
+			ValueConsumer: func(v bool) { reportToLog = v },
+		},
+	})
+
+	logger.Info("params",
+		"addr", addr,
+		"pollInterval", pollInterval,
+		"reportInterval", reportInterval,
+		"reportToLog", reportToLog,
+	)
 
 	metricsRepository := repository.NewMetricsMemoryRepository()
-	metricsService := service.NewMetricsService(metricsRepository)
+	eventService := service.NewInMemoryEventService(logger.With(LoggerNameKey, "service.InMemoryEventService"))
+	metricsService := service.NewMetricsService(logger.With(LoggerNameKey, "service.MetricsService"), metricsRepository, eventService)
 
-	//consoleReporter := reporter.NewConsoleReporter()
-	backendReporter := reporter.NewBackendReporter(*addr)
+	var metricsReporter reporter.MetricsReporter
+	if reportToLog {
+		metricsReporter = reporter.NewLogReporter(logger.With(LoggerNameKey, "reporter.LogReporter"))
+	} else {
+		metricsReporter = reporter.NewBackendReporter(addr, logger.With(LoggerNameKey, "reporter.BackendReporter"))
+	}
 
 	memStatsPoller := poller.NewMemStatsPoller()
 	pollCountPoller := poller.NewPollCountPoller()
 	randomValuePoller := poller.NewRandomValuePoller()
 
 	metricsCollector := agent.NewMetricsCollector(
+		logger.With(LoggerNameKey, "agent.MetricsCollector"),
 		metricsService,
 		[]poller.MetricsPoller{
 			memStatsPoller,
 			pollCountPoller,
 			randomValuePoller,
 		},
-		backendReporter,
+		metricsReporter,
 		&agent.MetricsCollectorParams{
-			PollInterval:   time.Duration(*pollInterval) * time.Second,
-			ReportInterval: time.Duration(*reportInterval) * time.Second,
+			PollInterval:   time.Duration(pollInterval) * time.Second,
+			ReportInterval: time.Duration(reportInterval) * time.Second,
 			PollCallback:   pollCountPoller.IncrementCount,
 			ReportCallback: pollCountPoller.ResetCount,
 		},

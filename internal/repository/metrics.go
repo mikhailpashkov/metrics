@@ -16,6 +16,7 @@ type MetricsRepository interface {
 	FindAll(ctx context.Context) ([]*models.Metrics, error)
 	Save(ctx context.Context, metrics *models.Metrics) (*models.Metrics, error)
 	DeleteAll(ctx context.Context) error
+	DeleteById(ctx context.Context, id int64) error
 }
 
 type MetricsMemoryRepository struct {
@@ -26,7 +27,7 @@ type MetricsMemoryRepository struct {
 	errMetricsIsNil error
 }
 
-func NewMetricsMemoryRepository() MetricsRepository {
+func NewMetricsMemoryRepository() *MetricsMemoryRepository {
 	return &MetricsMemoryRepository{
 		storage:         make(map[int64]*models.Metrics),
 		lastId:          -1,
@@ -86,5 +87,12 @@ func (m *MetricsMemoryRepository) DeleteAll(ctx context.Context) error {
 	defer m.mu.Unlock()
 	m.storage = make(map[int64]*models.Metrics)
 	m.lastId = -1
+	return nil
+}
+
+func (m *MetricsMemoryRepository) DeleteById(ctx context.Context, id int64) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	delete(m.storage, id)
 	return nil
 }

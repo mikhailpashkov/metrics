@@ -3,9 +3,11 @@ package service
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"sort"
 	"time"
 
+	"github.com/google/uuid"
 	models "github.com/mikhailpashkov/metrics/internal/model"
 	"github.com/mikhailpashkov/metrics/internal/repository"
 )
@@ -16,15 +18,22 @@ type MetricsService interface {
 	UpdateGauge(ctx context.Context, name string, value float64) (*models.Metrics, error)
 	GetAllRecords(ctx context.Context) ([]*models.Metrics, error)
 	GetAllAccumulated(ctx context.Context) ([]*models.Metrics, error)
+	Delete(ctx context.Context, id int64) error
 	DeleteAll(ctx context.Context) error
 }
 
 type MetricsServiceImpl struct {
+	logger            *slog.Logger
 	metricsRepository repository.MetricsRepository
+	eventService      EventService
 }
 
-func NewMetricsService(metricsStorage repository.MetricsRepository) *MetricsServiceImpl {
-	return &MetricsServiceImpl{metricsStorage}
+func NewMetricsService(logger *slog.Logger, metricsRepository repository.MetricsRepository, eventService EventService) *MetricsServiceImpl {
+	return &MetricsServiceImpl{
+		logger:            logger,
+		metricsRepository: metricsRepository,
+		eventService:      eventService,
+	}
 }
 
 func (ms *MetricsServiceImpl) UpdateMetrics(ctx context.Context, metricsModel *models.Metrics) (*models.Metrics, error) {
@@ -32,6 +41,8 @@ func (ms *MetricsServiceImpl) UpdateMetrics(ctx context.Context, metricsModel *m
 	if err != nil {
 		return nil, err
 	}
+
+	defer ms.eventService.Notify(&models.Event{ID: uuid.NewString(), Key: models.MetricsUpdatedEvent})
 
 	return savedMetrics, nil
 }
@@ -66,6 +77,10 @@ func (ms *MetricsServiceImpl) GetAllAccumulated(ctx context.Context) ([]*models.
 		return nil, err
 	}
 
+	if len(records) == 0 {
+		return []*models.Metrics{}, nil
+	}
+
 	nameToRecords := make(map[string][]*models.Metrics)
 	for _, record := range records {
 		_, ok := nameToRecords[record.Name]
@@ -80,7 +95,7 @@ func (ms *MetricsServiceImpl) GetAllAccumulated(ctx context.Context) ([]*models.
 		recordsType := groupedRecords[0].Type
 		for _, record := range groupedRecords {
 			if record.Type != recordsType {
-				panic("record type mismatch")
+				return nil, fmt.Errorf("record type mismatch")
 			}
 		}
 
@@ -89,7 +104,7 @@ func (ms *MetricsServiceImpl) GetAllAccumulated(ctx context.Context) ([]*models.
 			var accumulatedDelta int64
 			for _, record := range groupedRecords {
 				if record.Delta == nil {
-					fmt.Println("[ERR] counter delta is nil")
+					ms.logger.Warn("counter delta is nil", "id", record.ID, "name", record.Name)
 					continue
 				}
 				accumulatedDelta += *record.Delta
@@ -108,18 +123,36 @@ func (ms *MetricsServiceImpl) GetAllAccumulated(ctx context.Context) ([]*models.
 			sort.Slice(groupedRecords, func(i, j int) bool {
 				return groupedRecords[i].ID < groupedRecords[j].ID
 			})
-			lastRecordByTS := groupedRecords[len(groupedRecords)-1]
+			lastRecordByID := groupedRecords[len(groupedRecords)-1]
 
-			result = append(result, lastRecordByTS)
+			result = append(result, lastRecordByID)
 			continue
 		default:
-			panic("invalid record type")
+			return nil, fmt.Errorf("invalid record type")
 		}
 	}
 
 	return result, nil
 }
 
+func (ms *MetricsServiceImpl) Delete(ctx context.Context, id int64) error {
+	err := ms.metricsRepository.DeleteById(ctx, id)
+	if err != nil {
+		return fmt.Errorf("failed to delete metrics record with id %d: %w", id, err)
+	}
+
+	defer ms.eventService.Notify(&models.Event{ID: uuid.NewString(), Key: models.MetricsDeletedEvent})
+
+	return nil
+}
+
 func (ms *MetricsServiceImpl) DeleteAll(ctx context.Context) error {
-	return ms.metricsRepository.DeleteAll(ctx)
+	err := ms.metricsRepository.DeleteAll(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to delete all metrics: %w", err)
+	}
+
+	defer ms.eventService.Notify(&models.Event{ID: uuid.NewString(), Key: models.MetricsDeletedEvent})
+
+	return nil
 }

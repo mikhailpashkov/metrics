@@ -3,11 +3,12 @@ package reporter
 import (
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
-	"net/url"
 	"strconv"
 	"time"
 
+	"github.com/mikhailpashkov/metrics/internal/mapper"
 	models "github.com/mikhailpashkov/metrics/internal/model"
 	"resty.dev/v3"
 )
@@ -15,15 +16,21 @@ import (
 type BackendReporter struct {
 	address string
 	client  *resty.Client
+	logger  *slog.Logger
 }
 
-func NewBackendReporter(address string) *BackendReporter {
+func NewBackendReporter(address string, logger *slog.Logger) *BackendReporter {
 	client := resty.New()
 	client.SetTimeout(5 * time.Second)
 	return &BackendReporter{
 		address: address,
 		client:  client,
+		logger:  logger,
 	}
+}
+
+func (r *BackendReporter) GetLogger() *slog.Logger {
+	return r.logger
 }
 
 func (r *BackendReporter) SendMetrics(metrics *models.Metrics) error {
@@ -48,15 +55,16 @@ func (r *BackendReporter) SendMetrics(metrics *models.Metrics) error {
 		return fmt.Errorf("unknown metric type: %s", metrics.Type)
 	}
 
-	updateUrl := fmt.Sprintf("http://%s/update/%s/%s/%s",
+	updateUrl := fmt.Sprintf("http://%s/update",
 		r.address,
-		metrics.Type,
-		url.PathEscape(metrics.Name),
-		url.PathEscape(metricsValue),
 	)
 
+	requestBody := mapper.MetricsToUpdateMetricsRequest(metrics)
+
 	request := r.client.R().
-		SetHeader("Content-Type", "text/plain").
+		SetHeader("Content-Type", "application/json").
+		SetHeader("Accept-Encoding", "gzip").
+		SetBody(requestBody).
 		SetRetryCount(3).
 		SetRetryWaitTime(1 * time.Second).
 		SetRetryMaxWaitTime(5 * time.Second).
@@ -78,7 +86,12 @@ func (r *BackendReporter) SendMetrics(metrics *models.Metrics) error {
 		return fmt.Errorf("update metrics failed: unexpected status %d: %s", resp.StatusCode(), string(body))
 	}
 
-	fmt.Println("BackendReporter - sent update for", metrics.Type, metrics.Name, metricsValue)
+	r.GetLogger().Debug(
+		"sent update",
+		"type", metrics.Type,
+		"name", metrics.Name,
+		"value", metricsValue,
+	)
 
 	return nil
 }

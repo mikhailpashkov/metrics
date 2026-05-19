@@ -26,7 +26,7 @@ func (p *PollCountPoller) GetMetrics() ([]*models.Metrics, error) {
 		{
 			ID:    -1,
 			Type:  models.Counter,
-			Name:  "custom.PollCount",
+			Name:  "PollCount",
 			Delta: &p.count,
 			Value: nil,
 			TS:    time.Now().UnixMilli(),
