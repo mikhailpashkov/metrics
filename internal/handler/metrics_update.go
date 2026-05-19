@@ -2,7 +2,6 @@ package handler
 
 import (
 	"encoding/json"
-	"fmt"
 	"log/slog"
 	"net/http"
 
@@ -66,13 +65,13 @@ func (m *UpdateMetricsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request)
 	_, err = m.metricsService.UpdateMetrics(r.Context(), metrics)
 	if err != nil {
 		m.logger.Error("Value update error", "err", err)
-		http.Error(w, fmt.Sprintf("Value update error: %s", err), http.StatusInternalServerError)
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
 
 	_, err = w.Write([]byte("{}"))
 	if err != nil {
 		m.logger.Error("failed to write response", "err", err)
-		http.Error(w, fmt.Sprintf("failed to write response %s", err), http.StatusInternalServerError)
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 	}
 }

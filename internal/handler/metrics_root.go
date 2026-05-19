@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"fmt"
 	"html/template"
 	"log/slog"
 	"net/http"
@@ -63,7 +62,8 @@ func (m *MetricsRootHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	accumulated, err := m.metricsService.GetAllAccumulated(r.Context())
 	if err != nil {
-		http.Error(w, fmt.Sprintf("GetAllAccumulated error: %s", err), http.StatusInternalServerError)
+		m.logger.Error("Error getting all accumulated metrics", "err", err)
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
 	sort.Slice(accumulated, func(i, j int) bool {
@@ -74,12 +74,14 @@ func (m *MetricsRootHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	tmpl, err := template.New("metrics").Parse(htmlTemplate)
 	if err != nil {
-		http.Error(w, fmt.Sprintf("template parse error: %s", err), http.StatusInternalServerError)
+		m.logger.Error("Failed to parse template", "err", err)
+		http.Error(w, "template parse error", http.StatusInternalServerError)
 		return
 	}
 	err = tmpl.Execute(w, accumulated)
 	if err != nil {
-		http.Error(w, fmt.Sprintf("template execute error: %s", err), http.StatusInternalServerError)
+		m.logger.Error("Failed to execute template", "err", err)
+		http.Error(w, "template execute error", http.StatusInternalServerError)
 		return
 	}
 }

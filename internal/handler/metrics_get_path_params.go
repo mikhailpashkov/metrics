@@ -54,7 +54,8 @@ func (m *GetMetricsPathParamsHandler) ServeHTTP(w http.ResponseWriter, r *http.R
 
 	accumulated, err := m.metricsService.GetAllAccumulated(r.Context())
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		m.logger.Error("Error getting all accumulated metrics", "err", err)
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
 
@@ -81,13 +82,15 @@ func (m *GetMetricsPathParamsHandler) ServeHTTP(w http.ResponseWriter, r *http.R
 	case models.Gauge:
 		_, err := w.Write([]byte(strconv.FormatFloat(*result.Value, 'f', -1, 64)))
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			m.logger.Error("Failed to write response", "err", err.Error())
+			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 			return
 		}
 	case models.Counter:
 		_, err := w.Write([]byte(strconv.FormatInt(*result.Delta, 10)))
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			m.logger.Error("Failed to write response", "err", err.Error())
+			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 			return
 		}
 	}

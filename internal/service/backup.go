@@ -123,7 +123,7 @@ func (bs *BackupServiceImpl) doBackup(ctx context.Context) {
 	bs.logger.Info("backup started")
 	metrics, err := bs.metricsService.GetAllAccumulated(ctx)
 	if err != nil {
-		bs.logger.Error("get metrics failed", "err", err)
+		bs.logger.Error("Error getting all accumulated metrics", "err", err)
 		return
 	}
 

@@ -52,7 +52,8 @@ func (m *UpdateMetricsPathParamsHandler) ServeHTTP(w http.ResponseWriter, r *htt
 
 		_, err = m.metricsService.UpdateCounter(r.Context(), name, parseInt)
 		if err != nil {
-			http.Error(w, fmt.Sprintf("Value update error: %s", err), http.StatusInternalServerError)
+			m.logger.Error("Value update error", "err", err)
+			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 			return
 		}
 
@@ -72,7 +73,8 @@ func (m *UpdateMetricsPathParamsHandler) ServeHTTP(w http.ResponseWriter, r *htt
 
 		_, err = m.metricsService.UpdateGauge(r.Context(), name, parseFloat)
 		if err != nil {
-			http.Error(w, fmt.Sprintf("Value update error: %s", err), http.StatusInternalServerError)
+			m.logger.Error("Value update error", "err", err)
+			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 			return
 		}
 

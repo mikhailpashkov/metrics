@@ -36,7 +36,8 @@ func (h *gzipHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	gz, err := gzip.NewWriterLevel(w, gzip.BestSpeed)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		h.logger.Error("Failed to create new gzip writer", "err", err.Error())
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
 	defer gz.Close()

@@ -61,8 +61,8 @@ func (m *GetMetricsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	accumulated, err := m.metricsService.GetAllAccumulated(r.Context())
 	if err != nil {
-		m.logger.Error("error getting accumulated metrics", "err", err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		m.logger.Error("Error getting all accumulated metrics", "err", err)
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
 
@@ -90,7 +90,7 @@ func (m *GetMetricsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	err = json.NewEncoder(w).Encode(response)
 	if err != nil {
 		m.logger.Error("error encoding response", "err", err)
-		http.Error(w, "Cant encode json: "+err.Error(), http.StatusInternalServerError)
+		http.Error(w, "Cant encode json", http.StatusInternalServerError)
 		return
 	}
 }
