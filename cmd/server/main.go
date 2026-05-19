@@ -8,12 +8,15 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	chi_middleware "github.com/go-chi/chi/v5/middleware"
-	_const "github.com/mikhailpashkov/metrics/internal/config/const"
 	"github.com/mikhailpashkov/metrics/internal/handler"
 	"github.com/mikhailpashkov/metrics/internal/handler/middleware"
 	"github.com/mikhailpashkov/metrics/internal/repository"
 	"github.com/mikhailpashkov/metrics/internal/service"
 	"github.com/mikhailpashkov/metrics/internal/utils"
+)
+
+const (
+	LoggerNameKey = "slog_logger"
 )
 
 func main() {
@@ -72,14 +75,14 @@ func main() {
 	logger.Debug("init dependencies")
 	metricsRepository := repository.NewMetricsMemoryRepository()
 	backupRepository := repository.NewFileBackupRepository(fileStoragePath)
-	eventService := service.NewInMemoryEventService(logger.With(_const.LoggerNameKey, "service.NewInMemoryEventService"))
+	eventService := service.NewInMemoryEventService(logger.With(LoggerNameKey, "service.NewInMemoryEventService"))
 	metricsService := service.NewMetricsService(
-		logger.With(_const.LoggerNameKey, "service.MetricsService"),
+		logger.With(LoggerNameKey, "service.MetricsService"),
 		metricsRepository,
 		eventService,
 	)
 	backupService := service.NewBackupService(
-		logger.With(_const.LoggerNameKey, "service.BackupService"),
+		logger.With(LoggerNameKey, "service.BackupService"),
 		metricsService,
 		backupRepository,
 		eventService,
@@ -108,32 +111,32 @@ func main() {
 
 	// наверняка, хорошей идеей будет использовать github.com/go-chi/chi/v5/middleware,
 	// но в учебных целях используем самодельные
-	r.Use(middleware.WithLogging(logger.With(_const.LoggerNameKey, "middleware.WithLogging")))
-	r.Use(middleware.WithGZIPSupport(logger.With(_const.LoggerNameKey, "middleware.WithGZIPSupport")))
+	r.Use(middleware.WithLogging(logger.With(LoggerNameKey, "middleware.WithLogging")))
+	r.Use(middleware.WithGZIPSupport(logger.With(LoggerNameKey, "middleware.WithGZIPSupport")))
 
 	// для фикса автотестов в iter7: там, зачем-то, в конце слеши приделали на клиенте
 	r.Use(chi_middleware.StripSlashes)
 
 	r.Handle("/", handler.NewMetricsRootHandler(
-		logger.With(_const.LoggerNameKey, "handler.MetricsRootHandler"),
+		logger.With(LoggerNameKey, "handler.MetricsRootHandler"),
 		metricsService,
 	))
 
 	r.Handle("/value", handler.NewGetMetricsHandler(
-		logger.With(_const.LoggerNameKey, "handler.GetMetricsHandler"),
+		logger.With(LoggerNameKey, "handler.GetMetricsHandler"),
 		metricsService,
 	))
 	r.Handle("/value/{type}/{name}", handler.NewGetMetricsPathParamsHandler(
-		logger.With(_const.LoggerNameKey, "handler.GetMetricsPathParamsHandler"),
+		logger.With(LoggerNameKey, "handler.GetMetricsPathParamsHandler"),
 		metricsService,
 	))
 
 	r.Handle("/update", handler.NewUpdateMetricsHandler(
-		logger.With(_const.LoggerNameKey, "handler.UpdateMetricsHandler"),
+		logger.With(LoggerNameKey, "handler.UpdateMetricsHandler"),
 		metricsService,
 	))
 	r.Handle("/update/{type}/{name}/{value}", handler.NewUpdateMetricsPathParamsHandler(
-		logger.With(_const.LoggerNameKey, "handler.UpdateMetricsPathParamsHandler"),
+		logger.With(LoggerNameKey, "handler.UpdateMetricsPathParamsHandler"),
 		metricsService,
 	))
 

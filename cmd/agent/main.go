@@ -8,10 +8,13 @@ import (
 	"github.com/mikhailpashkov/metrics/internal/agent"
 	"github.com/mikhailpashkov/metrics/internal/agent/poller"
 	"github.com/mikhailpashkov/metrics/internal/agent/reporter"
-	_const "github.com/mikhailpashkov/metrics/internal/config/const"
 	"github.com/mikhailpashkov/metrics/internal/repository"
 	"github.com/mikhailpashkov/metrics/internal/service"
 	"github.com/mikhailpashkov/metrics/internal/utils"
+)
+
+const (
+	LoggerNameKey = "slog_logger"
 )
 
 func main() {
@@ -66,14 +69,14 @@ func main() {
 	)
 
 	metricsRepository := repository.NewMetricsMemoryRepository()
-	eventService := service.NewInMemoryEventService(logger.With(_const.LoggerNameKey, "service.InMemoryEventService"))
-	metricsService := service.NewMetricsService(logger.With(_const.LoggerNameKey, "service.MetricsService"), metricsRepository, eventService)
+	eventService := service.NewInMemoryEventService(logger.With(LoggerNameKey, "service.InMemoryEventService"))
+	metricsService := service.NewMetricsService(logger.With(LoggerNameKey, "service.MetricsService"), metricsRepository, eventService)
 
 	var metricsReporter reporter.MetricsReporter
 	if reportToLog {
-		metricsReporter = reporter.NewLogReporter(logger.With(_const.LoggerNameKey, "reporter.LogReporter"))
+		metricsReporter = reporter.NewLogReporter(logger.With(LoggerNameKey, "reporter.LogReporter"))
 	} else {
-		metricsReporter = reporter.NewBackendReporter(addr, logger.With(_const.LoggerNameKey, "reporter.BackendReporter"))
+		metricsReporter = reporter.NewBackendReporter(addr, logger.With(LoggerNameKey, "reporter.BackendReporter"))
 	}
 
 	memStatsPoller := poller.NewMemStatsPoller()
@@ -81,7 +84,7 @@ func main() {
 	randomValuePoller := poller.NewRandomValuePoller()
 
 	metricsCollector := agent.NewMetricsCollector(
-		logger.With(_const.LoggerNameKey, "agent.MetricsCollector"),
+		logger.With(LoggerNameKey, "agent.MetricsCollector"),
 		metricsService,
 		[]poller.MetricsPoller{
 			memStatsPoller,
