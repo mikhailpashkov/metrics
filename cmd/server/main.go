@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"log/slog"
 	"net/http"
 	"os"
@@ -11,14 +10,13 @@ import (
 	"github.com/go-chi/chi/v5"
 	chimiddleware "github.com/go-chi/chi/v5/middleware"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/jackc/pgx/v5/stdlib"
+	"github.com/mikhailpashkov/metrics/db/metrics"
 	"github.com/mikhailpashkov/metrics/db/migrations"
 	"github.com/mikhailpashkov/metrics/internal/handler"
 	"github.com/mikhailpashkov/metrics/internal/handler/middleware"
 	"github.com/mikhailpashkov/metrics/internal/repository"
 	"github.com/mikhailpashkov/metrics/internal/service"
 	"github.com/mikhailpashkov/metrics/internal/utils"
-	"github.com/pressly/goose/v3"
 )
 
 const (
@@ -114,21 +112,16 @@ func main() {
 			os.Exit(1)
 		}
 
-		logger.Debug("run migrations")
-
-		goose.SetLogger(NewGooseLogger(logger.With(LoggerNameKey, "goose")))
-		goose.SetBaseFS(migrations.FS)
-
-		if err = goose.SetDialect("postgres"); err != nil {
-			logger.Error("failed to set postgres dialect", "err", err.Error())
+		err = migrations.RunMigrations(
+			logger.With(LoggerNameKey, "migrations"),
+			pgxPool,
+		)
+		if err != nil {
+			logger.Error("failed to run migrations", "err", err.Error())
 			os.Exit(1)
 		}
 
-		sqlDB := stdlib.OpenDBFromPool(pgxPool)
-		if err = goose.Up(sqlDB, "."); err != nil {
-			logger.Error("failed to up migrations", "err", err.Error())
-			os.Exit(1)
-		}
+		_ = metrics.New(pgxPool)
 	} else {
 		logger.Debug("empty databaseDSN, skip connect to db")
 	}
@@ -218,21 +211,4 @@ func main() {
 		logger.Error("failed to start server", "error", err)
 		os.Exit(1)
 	}
-}
-
-type GooseLogger struct {
-	*slog.Logger
-}
-
-func NewGooseLogger(logger *slog.Logger) *GooseLogger {
-	return &GooseLogger{logger}
-}
-
-func (gl *GooseLogger) Fatalf(format string, v ...any) {
-	gl.Logger.Error(fmt.Sprintf(format, v...))
-	os.Exit(1)
-}
-
-func (gl *GooseLogger) Printf(format string, v ...any) {
-	gl.Logger.Info(fmt.Sprintf(format, v...))
 }
