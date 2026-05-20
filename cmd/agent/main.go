@@ -72,7 +72,7 @@ func main() {
 	eventService := service.NewInMemoryEventService(logger.With(LoggerNameKey, "service.InMemoryEventService"))
 	metricsService := service.NewMetricsService(logger.With(LoggerNameKey, "service.MetricsService"), metricsRepository, eventService)
 
-	var metricsReporter reporter.MetricsReporter
+	var metricsReporter agent.MetricsReporter
 	if reportToLog {
 		metricsReporter = reporter.NewLogReporter(logger.With(LoggerNameKey, "reporter.LogReporter"))
 	} else {
@@ -86,7 +86,7 @@ func main() {
 	metricsCollector := agent.NewMetricsCollector(
 		logger.With(LoggerNameKey, "agent.MetricsCollector"),
 		metricsService,
-		[]poller.MetricsPoller{
+		[]agent.MetricsPoller{
 			memStatsPoller,
 			pollCountPoller,
 			randomValuePoller,

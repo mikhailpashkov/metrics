@@ -21,8 +21,6 @@ func NewGetMetricsPathParamsHandler(logger *slog.Logger, metricsService service.
 	}
 }
 
-func (m *GetMetricsPathParamsHandler) GetLogger() *slog.Logger { return m.logger }
-
 func (m *GetMetricsPathParamsHandler) GetUrlPatterns() []string {
 	return []string{"/value/{type}/{name}"}
 }

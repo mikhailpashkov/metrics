@@ -36,6 +36,15 @@ func MetricsFromMetricsDto(dto dto.MetricsDto) *models.Metrics {
 	}
 }
 
+func MetricsToMetricsDto(m *models.Metrics) dto.MetricsDto {
+	return dto.MetricsDto{
+		Type:  m.Type,
+		ID:    m.Name,
+		Delta: m.Delta,
+		Value: m.Value,
+	}
+}
+
 func MetricsFromUpdateMetricsRequest(request dto.UpdateMetricsRequest) *models.Metrics {
 	return MetricsFromMetricsDto(dto.MetricsDto(request))
 }
