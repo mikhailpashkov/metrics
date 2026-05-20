@@ -10,15 +10,6 @@ import (
 	"github.com/mikhailpashkov/metrics/internal/model"
 )
 
-type MetricsRepository interface {
-	FindById(ctx context.Context, id int64) (*models.Metrics, error)
-	FindByName(ctx context.Context, name string) ([]*models.Metrics, error)
-	FindAll(ctx context.Context) ([]*models.Metrics, error)
-	Save(ctx context.Context, metrics *models.Metrics) (*models.Metrics, error)
-	DeleteAll(ctx context.Context) error
-	DeleteById(ctx context.Context, id int64) error
-}
-
 type MetricsMemoryRepository struct {
 	storage         map[int64]*models.Metrics
 	lastId          int64

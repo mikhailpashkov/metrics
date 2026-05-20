@@ -9,7 +9,6 @@ import (
 
 	"github.com/google/uuid"
 	models "github.com/mikhailpashkov/metrics/internal/model"
-	"github.com/mikhailpashkov/metrics/internal/repository"
 )
 
 type MetricsService interface {
@@ -22,13 +21,22 @@ type MetricsService interface {
 	DeleteAll(ctx context.Context) error
 }
 
+type MetricsRepository interface {
+	FindById(ctx context.Context, id int64) (*models.Metrics, error)
+	FindByName(ctx context.Context, name string) ([]*models.Metrics, error)
+	FindAll(ctx context.Context) ([]*models.Metrics, error)
+	Save(ctx context.Context, metrics *models.Metrics) (*models.Metrics, error)
+	DeleteAll(ctx context.Context) error
+	DeleteById(ctx context.Context, id int64) error
+}
+
 type MetricsServiceImpl struct {
 	logger            *slog.Logger
-	metricsRepository repository.MetricsRepository
+	metricsRepository MetricsRepository
 	eventService      EventService
 }
 
-func NewMetricsService(logger *slog.Logger, metricsRepository repository.MetricsRepository, eventService EventService) *MetricsServiceImpl {
+func NewMetricsService(logger *slog.Logger, metricsRepository MetricsRepository, eventService EventService) *MetricsServiceImpl {
 	return &MetricsServiceImpl{
 		logger:            logger,
 		metricsRepository: metricsRepository,
