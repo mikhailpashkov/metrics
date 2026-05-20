@@ -99,7 +99,7 @@ func TestSendMetrics(t *testing.T) {
 
 			br := NewBackendReporter(ts.Listener.Addr().String(), slog.Default())
 
-			err := br.SendMetrics(tt.metric)
+			err := br.SendMetrics([]*models.Metrics{tt.metric})
 			if tt.wantErr {
 				require.Error(t, err)
 			} else {
