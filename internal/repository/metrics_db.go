@@ -14,6 +14,10 @@ type MetricsDBRepository struct {
 	metricsQuery *metricsdb.Queries
 }
 
+func NewMetricsDBRepository(metricsQuery *metricsdb.Queries) *MetricsDBRepository {
+	return &MetricsDBRepository{metricsQuery: metricsQuery}
+}
+
 func (r MetricsDBRepository) FindById(ctx context.Context, id int64) (*models.Metrics, error) {
 	metrics, err := r.metricsQuery.FindById(ctx, id)
 	if err != nil {

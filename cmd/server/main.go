@@ -65,7 +65,7 @@ func main() {
 			EnvName:       "RESTORE",
 			FlagName:      "r",
 			FlagUsage:     "Restore backup on startup",
-			Default:       true,
+			Default:       false,
 			ValueConsumer: func(v bool) { restore = v },
 		},
 		&utils.StringParam{
@@ -87,7 +87,7 @@ func main() {
 
 	// Database ///////////////////////
 	wantDB := len(databaseDSN) != 0
-	var dbQueries *dbmetrics.Queries
+	var metricsQuery *dbmetrics.Queries
 	var err error
 	if wantDB {
 		logger.Debug("connect to db")
@@ -121,14 +121,21 @@ func main() {
 			os.Exit(1)
 		}
 
-		dbQueries = dbmetrics.New(pgxPool)
+		metricsQuery = dbmetrics.New(pgxPool)
 	} else {
 		logger.Debug("empty databaseDSN, skip connect to db")
 	}
 
 	// Dependencies ///////////////////
 	logger.Debug("init dependencies")
-	metricsRepository := repository.NewMetricsMemoryRepository()
+
+	var metricsRepository service.MetricsRepository
+	if wantDB {
+		metricsRepository = repository.NewMetricsDBRepository(metricsQuery)
+	} else {
+		metricsRepository = repository.NewMetricsMemoryRepository()
+	}
+
 	backupRepository := repository.NewFileBackupRepository(fileStoragePath)
 	eventService := service.NewInMemoryEventService(logger.With(LoggerNameKey, "service.NewInMemoryEventService"))
 	metricsService := service.NewMetricsService(
@@ -196,13 +203,13 @@ func main() {
 	))
 
 	if wantDB {
-		if dbQueries == nil {
-			logger.Error("nil dbQueries when wantDB")
+		if metricsQuery == nil {
+			logger.Error("nil metricsQuery when wantDB")
 			os.Exit(1)
 		}
 		r.Handle("/ping", handler.NewDBPingHandler(
 			logger.With(LoggerNameKey, "handler.DBPingHandler"),
-			dbQueries,
+			metricsQuery,
 		))
 	}
 
