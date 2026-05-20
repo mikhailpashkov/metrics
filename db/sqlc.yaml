@@ -8,3 +8,16 @@ sql:
         package: "metrics"
         out: "metrics"
         sql_package: "pgx/v5"
+        overrides:
+          - db_type: "pg_catalog.timestamp"
+            go_type: "time.Time"
+          - db_type: "pg_catalog.int8"
+            nullable: true
+            go_type:
+              type: "int64"
+              pointer: true
+          - db_type: "pg_catalog.float8"
+            nullable: true
+            go_type:
+              type: "float64"
+              pointer: true

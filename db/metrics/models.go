@@ -5,14 +5,14 @@
 package metrics
 
 import (
-	"github.com/jackc/pgx/v5/pgtype"
+	"time"
 )
 
 type Metric struct {
 	ID    int64
-	Ts    pgtype.Timestamp
+	Ts    time.Time
 	Type  string
 	Name  string
-	Delta pgtype.Int8
-	Value pgtype.Float8
+	Delta *int64
+	Value *float64
 }

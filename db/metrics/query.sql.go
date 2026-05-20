@@ -7,15 +7,30 @@ package metrics
 
 import (
 	"context"
+	"time"
 )
 
-const getMetrics = `-- name: GetMetrics :many
+const deleteById = `-- name: DeleteById :execrows
+DELETE
+FROM metrics
+WHERE id = $1
+`
+
+func (q *Queries) DeleteById(ctx context.Context, id int64) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteById, id)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const findAll = `-- name: FindAll :many
 SELECT id, ts, type, name, delta, value
 FROM metrics
 `
 
-func (q *Queries) GetMetrics(ctx context.Context) ([]Metric, error) {
-	rows, err := q.db.Query(ctx, getMetrics)
+func (q *Queries) FindAll(ctx context.Context) ([]Metric, error) {
+	rows, err := q.db.Query(ctx, findAll)
 	if err != nil {
 		return nil, err
 	}
@@ -39,4 +54,134 @@ func (q *Queries) GetMetrics(ctx context.Context) ([]Metric, error) {
 		return nil, err
 	}
 	return items, nil
+}
+
+const findById = `-- name: FindById :one
+SELECT id, ts, type, name, delta, value
+FROM metrics
+WHERE id = $1
+LIMIT 1
+`
+
+func (q *Queries) FindById(ctx context.Context, id int64) (Metric, error) {
+	row := q.db.QueryRow(ctx, findById, id)
+	var i Metric
+	err := row.Scan(
+		&i.ID,
+		&i.Ts,
+		&i.Type,
+		&i.Name,
+		&i.Delta,
+		&i.Value,
+	)
+	return i, err
+}
+
+const findByName = `-- name: FindByName :many
+SELECT id, ts, type, name, delta, value
+FROM metrics
+WHERE name = $1
+LIMIT 1
+`
+
+func (q *Queries) FindByName(ctx context.Context, name string) ([]Metric, error) {
+	rows, err := q.db.Query(ctx, findByName, name)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Metric
+	for rows.Next() {
+		var i Metric
+		if err := rows.Scan(
+			&i.ID,
+			&i.Ts,
+			&i.Type,
+			&i.Name,
+			&i.Delta,
+			&i.Value,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const insert = `-- name: Insert :one
+INSERT INTO metrics(ts, type, name, delta, value)
+VALUES ($1, $2, $3, $4, $5)
+RETURNING id, ts, type, name, delta, value
+`
+
+type InsertParams struct {
+	Ts    time.Time
+	Type  string
+	Name  string
+	Delta *int64
+	Value *float64
+}
+
+func (q *Queries) Insert(ctx context.Context, arg InsertParams) (Metric, error) {
+	row := q.db.QueryRow(ctx, insert,
+		arg.Ts,
+		arg.Type,
+		arg.Name,
+		arg.Delta,
+		arg.Value,
+	)
+	var i Metric
+	err := row.Scan(
+		&i.ID,
+		&i.Ts,
+		&i.Type,
+		&i.Name,
+		&i.Delta,
+		&i.Value,
+	)
+	return i, err
+}
+
+const update = `-- name: Update :one
+UPDATE metrics
+SET ts    = $2,
+    type  = $3,
+    name  = $4,
+    delta = $5,
+    value = $6
+WHERE id = $1
+RETURNING id, ts, type, name, delta, value
+`
+
+type UpdateParams struct {
+	ID    int64
+	Ts    time.Time
+	Type  string
+	Name  string
+	Delta *int64
+	Value *float64
+}
+
+func (q *Queries) Update(ctx context.Context, arg UpdateParams) (Metric, error) {
+	row := q.db.QueryRow(ctx, update,
+		arg.ID,
+		arg.Ts,
+		arg.Type,
+		arg.Name,
+		arg.Delta,
+		arg.Value,
+	)
+	var i Metric
+	err := row.Scan(
+		&i.ID,
+		&i.Ts,
+		&i.Type,
+		&i.Name,
+		&i.Delta,
+		&i.Value,
+	)
+	return i, err
 }
