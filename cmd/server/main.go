@@ -83,13 +83,13 @@ func main() {
 		"len(databaseDSN)", len(databaseDSN), // dont log sensitive data
 	)
 
-	wantDB := len(databaseDSN) != 0
-
 	// Database ///////////////////////
+	wantDB := len(databaseDSN) != 0
 	var conn *pgx.Conn
+	var err error
 	if wantDB {
 		logger.Debug("connect to db")
-		conn, err := pgx.Connect(context.Background(), databaseDSN)
+		conn, err = pgx.Connect(context.Background(), databaseDSN)
 		if err != nil {
 			logger.Error("failed to connect to DB", "err", err.Error())
 			os.Exit(1)
@@ -136,7 +136,7 @@ func main() {
 		}
 	}
 	logger.Debug("setup runtime backup")
-	err := backupService.SetupBackup(context.Background(), storeInterval)
+	err = backupService.SetupBackup(context.Background(), storeInterval)
 	if err != nil {
 		logger.Error("failed to setup backup", "err", err)
 		os.Exit(1)
@@ -179,6 +179,10 @@ func main() {
 	))
 
 	if wantDB {
+		if conn == nil {
+			logger.Error("nil db connection when wantDB")
+			os.Exit(1)
+		}
 		r.Handle("/ping", handler.NewDBPingHandler(
 			logger.With(LoggerNameKey, "handler.DBPingHandler"),
 			conn,
