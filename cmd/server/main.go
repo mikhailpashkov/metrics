@@ -70,7 +70,7 @@ func main() {
 			EnvName:       "DATABASE_DSN",
 			FlagName:      "d",
 			FlagUsage:     "Database connection string",
-			Default:       "postgresql://username:password@localhost:5432/default_database",
+			Default:       "",
 			ValueConsumer: func(v string) { databaseDSN = v },
 		},
 	})
@@ -83,22 +83,30 @@ func main() {
 		"len(databaseDSN)", len(databaseDSN), // dont log sensitive data
 	)
 
+	wantDB := len(databaseDSN) != 0
+
 	// Database ///////////////////////
-	logger.Debug("connect to db")
-	conn, err := pgx.Connect(context.Background(), databaseDSN)
-	if err != nil {
-		logger.Error("failed to connect to DB", "err", err.Error())
-		os.Exit(1)
-	}
-	defer conn.Close(context.Background())
+	var conn *pgx.Conn
+	if wantDB {
+		logger.Debug("connect to db")
+		conn, err := pgx.Connect(context.Background(), databaseDSN)
+		if err != nil {
+			logger.Error("failed to connect to DB", "err", err.Error())
+			os.Exit(1)
+		}
+		defer conn.Close(context.Background())
 
-	dbPingTimeoutCtx, cancelFunc := context.WithTimeout(context.Background(), 15*time.Second)
-	defer cancelFunc()
+		logger.Debug("test db connection")
+		dbPingTimeoutCtx, cancelFunc := context.WithTimeout(context.Background(), 15*time.Second)
+		defer cancelFunc()
 
-	err = conn.Ping(dbPingTimeoutCtx)
-	if err != nil {
-		logger.Error("failed to ping DB", "err", err.Error())
-		os.Exit(1)
+		err = conn.Ping(dbPingTimeoutCtx)
+		if err != nil {
+			logger.Error("failed to ping DB", "err", err.Error())
+			os.Exit(1)
+		}
+	} else {
+		logger.Debug("empty databaseDSN, skip connect to db")
 	}
 
 	// Dependencies ///////////////////
@@ -128,7 +136,7 @@ func main() {
 		}
 	}
 	logger.Debug("setup runtime backup")
-	err = backupService.SetupBackup(context.Background(), storeInterval)
+	err := backupService.SetupBackup(context.Background(), storeInterval)
 	if err != nil {
 		logger.Error("failed to setup backup", "err", err)
 		os.Exit(1)
@@ -170,10 +178,12 @@ func main() {
 		metricsService,
 	))
 
-	r.Handle("/ping", handler.NewDBPingHandler(
-		logger.With(LoggerNameKey, "handler.DBPingHandler"),
-		conn,
-	))
+	if wantDB {
+		r.Handle("/ping", handler.NewDBPingHandler(
+			logger.With(LoggerNameKey, "handler.DBPingHandler"),
+			conn,
+		))
+	}
 
 	err = http.ListenAndServe(addr, r)
 	if err != nil {
