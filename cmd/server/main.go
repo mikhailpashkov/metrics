@@ -170,6 +170,11 @@ func main() {
 		metricsService,
 	))
 
+	r.Handle("/ping", handler.NewDBPingHandler(
+		logger.With(LoggerNameKey, "handler.DBPingHandler"),
+		conn,
+	))
+
 	err = http.ListenAndServe(addr, r)
 	if err != nil {
 		logger.Error("failed to start server", "error", err)
