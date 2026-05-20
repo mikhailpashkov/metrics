@@ -33,6 +33,8 @@ func main() {
 	var storeInterval int
 	var fileStoragePath string
 	var restore bool
+	var databaseDSN string
+
 	utils.GetParams([]utils.Param{
 		&utils.StringParam{
 			EnvName:       "ADDRESS",
@@ -62,6 +64,13 @@ func main() {
 			Default:       true,
 			ValueConsumer: func(v bool) { restore = v },
 		},
+		&utils.StringParam{
+			EnvName:       "DATABASE_DSN",
+			FlagName:      "d",
+			FlagUsage:     "Database connection string",
+			Default:       "postgresql://username:password@localhost:5432/default_database",
+			ValueConsumer: func(v string) { databaseDSN = v },
+		},
 	})
 
 	logger.Debug("params read",
@@ -69,6 +78,7 @@ func main() {
 		"storeInterval", storeInterval,
 		"fileStoragePath", fileStoragePath,
 		"restore", restore,
+		"databaseDSN", databaseDSN,
 	)
 
 	// Dependencies ///////////////////
