@@ -6,18 +6,18 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type DBPingHandler struct {
-	logger *slog.Logger
-	conn   *pgx.Conn
+	logger  *slog.Logger
+	pgxPool *pgxpool.Pool
 }
 
-func NewDBPingHandler(logger *slog.Logger, conn *pgx.Conn) *DBPingHandler {
+func NewDBPingHandler(logger *slog.Logger, pgxPool *pgxpool.Pool) *DBPingHandler {
 	return &DBPingHandler{
-		logger: logger,
-		conn:   conn,
+		logger:  logger,
+		pgxPool: pgxPool,
 	}
 }
 
@@ -31,7 +31,7 @@ func (h *DBPingHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	dbPingTimeoutCtx, cancelFunc := context.WithTimeout(r.Context(), 15*time.Second)
 	defer cancelFunc()
-	err := h.conn.Ping(dbPingTimeoutCtx)
+	err := h.pgxPool.Ping(dbPingTimeoutCtx)
 	if err != nil {
 		h.logger.Error("failed to ping DB", "err", err.Error())
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)

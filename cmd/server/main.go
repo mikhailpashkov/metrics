@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"os"
@@ -9,12 +10,15 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	chimiddleware "github.com/go-chi/chi/v5/middleware"
-	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/jackc/pgx/v5/stdlib"
+	"github.com/mikhailpashkov/metrics/db/migrations"
 	"github.com/mikhailpashkov/metrics/internal/handler"
 	"github.com/mikhailpashkov/metrics/internal/handler/middleware"
 	"github.com/mikhailpashkov/metrics/internal/repository"
 	"github.com/mikhailpashkov/metrics/internal/service"
 	"github.com/mikhailpashkov/metrics/internal/utils"
+	"github.com/pressly/goose/v3"
 )
 
 const (
@@ -85,24 +89,44 @@ func main() {
 
 	// Database ///////////////////////
 	wantDB := len(databaseDSN) != 0
-	var conn *pgx.Conn
+	var pgxPool *pgxpool.Pool
 	var err error
 	if wantDB {
 		logger.Debug("connect to db")
-		conn, err = pgx.Connect(context.Background(), databaseDSN)
+
+		pgxPool, err = pgxpool.New(context.Background(), databaseDSN)
 		if err != nil {
 			logger.Error("failed to connect to DB", "err", err.Error())
 			os.Exit(1)
 		}
-		defer conn.Close(context.Background())
+		defer pgxPool.Close()
 
 		logger.Debug("test db connection")
-		dbPingTimeoutCtx, cancelFunc := context.WithTimeout(context.Background(), 15*time.Second)
+
+		dbPingTimeoutCtx, cancelFunc := context.WithTimeout(
+			context.Background(),
+			15*time.Second,
+		)
 		defer cancelFunc()
 
-		err = conn.Ping(dbPingTimeoutCtx)
-		if err != nil {
+		if err = pgxPool.Ping(dbPingTimeoutCtx); err != nil {
 			logger.Error("failed to ping DB", "err", err.Error())
+			os.Exit(1)
+		}
+
+		logger.Debug("run migrations")
+
+		goose.SetLogger(NewGooseLogger(logger.With(LoggerNameKey, "goose")))
+		goose.SetBaseFS(migrations.FS)
+
+		if err = goose.SetDialect("postgres"); err != nil {
+			logger.Error("failed to set postgres dialect", "err", err.Error())
+			os.Exit(1)
+		}
+
+		sqlDB := stdlib.OpenDBFromPool(pgxPool)
+		if err = goose.Up(sqlDB, "."); err != nil {
+			logger.Error("failed to up migrations", "err", err.Error())
 			os.Exit(1)
 		}
 	} else {
@@ -179,13 +203,13 @@ func main() {
 	))
 
 	if wantDB {
-		if conn == nil {
+		if pgxPool == nil {
 			logger.Error("nil db connection when wantDB")
 			os.Exit(1)
 		}
 		r.Handle("/ping", handler.NewDBPingHandler(
 			logger.With(LoggerNameKey, "handler.DBPingHandler"),
-			conn,
+			pgxPool,
 		))
 	}
 
@@ -194,4 +218,21 @@ func main() {
 		logger.Error("failed to start server", "error", err)
 		os.Exit(1)
 	}
+}
+
+type GooseLogger struct {
+	*slog.Logger
+}
+
+func NewGooseLogger(logger *slog.Logger) *GooseLogger {
+	return &GooseLogger{logger}
+}
+
+func (gl *GooseLogger) Fatalf(format string, v ...any) {
+	gl.Logger.Error(fmt.Sprintf(format, v...))
+	os.Exit(1)
+}
+
+func (gl *GooseLogger) Printf(format string, v ...any) {
+	gl.Logger.Info(fmt.Sprintf(format, v...))
 }
