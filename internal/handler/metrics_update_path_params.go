@@ -67,7 +67,8 @@ func (m *UpdateMetricsPathParamsHandler) ServeHTTP(w http.ResponseWriter, r *htt
 	case models.Gauge:
 		parseFloat, err := strconv.ParseFloat(valueStr, 64)
 		if err != nil {
-			http.Error(w, fmt.Sprintf("Value conversion error: %s", err), http.StatusBadRequest)
+			m.logger.Error("Value conversion error", "err", err)
+			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusBadRequest)
 			return
 		}
 
