@@ -36,8 +36,8 @@ func (m *GetMetricsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 	err := json.NewDecoder(r.Body).Decode(&request)
 	if err != nil {
-		m.logger.Debug("invalid request: " + err.Error())
-		http.Error(w, "invalid request: "+err.Error(), http.StatusBadRequest)
+		m.logger.Debug("Error decoding body", "err", err)
+		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
 		return
 	}
 

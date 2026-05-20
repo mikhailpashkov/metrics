@@ -13,6 +13,7 @@ import (
 
 type MetricsService interface {
 	UpdateMetrics(ctx context.Context, metricsModel *models.Metrics) (*models.Metrics, error)
+	UpdateMetricsBatch(ctx context.Context, metricsModels []*models.Metrics) error
 	UpdateCounter(ctx context.Context, name string, delta int64) (*models.Metrics, error)
 	UpdateGauge(ctx context.Context, name string, value float64) (*models.Metrics, error)
 	GetAllRecords(ctx context.Context) ([]*models.Metrics, error)
@@ -26,6 +27,7 @@ type MetricsRepository interface {
 	FindByName(ctx context.Context, name string) ([]*models.Metrics, error)
 	FindAll(ctx context.Context) ([]*models.Metrics, error)
 	Save(ctx context.Context, metrics *models.Metrics) (*models.Metrics, error)
+	InsertBatch(ctx context.Context, metrics []*models.Metrics) error
 	DeleteAll(ctx context.Context) error
 	DeleteById(ctx context.Context, id int64) error
 }
@@ -47,12 +49,23 @@ func NewMetricsService(logger *slog.Logger, metricsRepository MetricsRepository,
 func (ms *MetricsServiceImpl) UpdateMetrics(ctx context.Context, metricsModel *models.Metrics) (*models.Metrics, error) {
 	savedMetrics, err := ms.metricsRepository.Save(ctx, metricsModel)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to UpdateMetrics: %w", err)
 	}
 
 	defer ms.eventService.Notify(&models.Event{ID: uuid.NewString(), Key: models.MetricsUpdatedEvent})
 
 	return savedMetrics, nil
+}
+
+func (ms *MetricsServiceImpl) UpdateMetricsBatch(ctx context.Context, metricsModels []*models.Metrics) error {
+	err := ms.metricsRepository.InsertBatch(ctx, metricsModels)
+	if err != nil {
+		return fmt.Errorf("failed to UpdateMetricsBatch: %w", err)
+	}
+
+	defer ms.eventService.Notify(&models.Event{ID: uuid.NewString(), Key: models.MetricsUpdatedEvent})
+
+	return nil
 }
 
 func (ms *MetricsServiceImpl) UpdateCounter(ctx context.Context, name string, delta int64) (*models.Metrics, error) {

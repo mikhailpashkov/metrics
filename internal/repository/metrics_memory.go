@@ -73,6 +73,22 @@ func (r *MetricsMemoryRepository) Save(ctx context.Context, metrics *models.Metr
 	return metrics, nil
 }
 
+func (r *MetricsMemoryRepository) InsertBatch(ctx context.Context, metrics []*models.Metrics) error {
+	if metrics == nil {
+		return r.errMetricsIsNil
+	}
+
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	for _, m := range metrics {
+		r.lastId++
+		m.ID = r.lastId
+		r.storage[m.ID] = m
+	}
+	return nil
+}
+
 func (r *MetricsMemoryRepository) DeleteAll(ctx context.Context) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()

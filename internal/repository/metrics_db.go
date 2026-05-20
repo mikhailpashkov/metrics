@@ -11,11 +11,15 @@ import (
 )
 
 type MetricsDBRepository struct {
-	metricsQuery *metricsdb.Queries
+	metricsQuery    *metricsdb.Queries
+	errMetricsIsNil error
 }
 
 func NewMetricsDBRepository(metricsQuery *metricsdb.Queries) *MetricsDBRepository {
-	return &MetricsDBRepository{metricsQuery: metricsQuery}
+	return &MetricsDBRepository{
+		metricsQuery:    metricsQuery,
+		errMetricsIsNil: errors.New("metrics is nil"),
+	}
 }
 
 func (r MetricsDBRepository) FindById(ctx context.Context, id int64) (*models.Metrics, error) {
@@ -43,6 +47,10 @@ func (r MetricsDBRepository) FindAll(ctx context.Context) ([]*models.Metrics, er
 }
 
 func (r MetricsDBRepository) Save(ctx context.Context, metrics *models.Metrics) (*models.Metrics, error) {
+	if metrics == nil {
+		return nil, r.errMetricsIsNil
+	}
+
 	var result metricsdb.Metric
 	var err error
 	isExist := metrics.ID != -1
@@ -55,6 +63,24 @@ func (r MetricsDBRepository) Save(ctx context.Context, metrics *models.Metrics) 
 		return nil, fmt.Errorf("failed to Save metrics: %w", err)
 	}
 	return mapper.MetricsFromDB(&result), nil
+}
+
+func (r MetricsDBRepository) InsertBatch(ctx context.Context, metrics []*models.Metrics) error {
+	if metrics == nil {
+		return r.errMetricsIsNil
+	}
+	for _, m := range metrics {
+		if m == nil {
+			return r.errMetricsIsNil
+		}
+	}
+
+	rows := mapper.MetricsToDBInsertBatchParamsList(metrics)
+	_, err := r.metricsQuery.InsertBatch(ctx, rows)
+	if err != nil {
+		return fmt.Errorf("failed to InsertBatch metrics: %w", err)
+	}
+	return nil
 }
 
 func (r MetricsDBRepository) DeleteAll(ctx context.Context) error {

@@ -201,6 +201,10 @@ func main() {
 		logger.With(LoggerNameKey, "handler.UpdateMetricsPathParamsHandler"),
 		metricsService,
 	))
+	r.Handle("/updates", handler.NewUpdateMetricsBatchHandler(
+		logger.With(LoggerNameKey, "handler.NewUpdateMetricsBatchHandler"),
+		metricsService,
+	))
 
 	if wantDB {
 		if metricsQuery == nil {

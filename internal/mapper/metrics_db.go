@@ -17,6 +17,24 @@ func MetricsToDBInsertParams(metrics *models.Metrics) *metricsdb.InsertParams {
 	}
 }
 
+func MetricsToDBInsertBatchParams(metrics *models.Metrics) *metricsdb.InsertBatchParams {
+	return &metricsdb.InsertBatchParams{
+		Ts:    time.UnixMilli(metrics.TS),
+		Type:  metrics.Type,
+		Name:  metrics.Name,
+		Delta: metrics.Delta,
+		Value: metrics.Value,
+	}
+}
+
+func MetricsToDBInsertBatchParamsList(metrics []*models.Metrics) []metricsdb.InsertBatchParams {
+	result := make([]metricsdb.InsertBatchParams, len(metrics))
+	for i, m := range metrics {
+		result[i] = *MetricsToDBInsertBatchParams(m)
+	}
+	return result
+}
+
 func MetricsToDBUpdateParams(metrics *models.Metrics) *metricsdb.UpdateParams {
 	return &metricsdb.UpdateParams{
 		ID:    metrics.ID,

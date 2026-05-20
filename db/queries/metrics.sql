@@ -19,6 +19,10 @@ INSERT INTO metrics(ts, type, name, delta, value)
 VALUES ($1, $2, $3, $4, $5)
 RETURNING *;
 
+-- name: InsertBatch :copyfrom
+INSERT INTO metrics(ts, type, name, delta, value)
+VALUES ($1, $2, $3, $4, $5);
+
 -- name: Update :one
 UPDATE metrics
 SET ts    = $2,

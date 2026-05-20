@@ -145,6 +145,14 @@ func (q *Queries) Insert(ctx context.Context, arg InsertParams) (Metric, error) 
 	return i, err
 }
 
+type InsertBatchParams struct {
+	Ts    time.Time
+	Type  string
+	Name  string
+	Delta *int64
+	Value *float64
+}
+
 const update = `-- name: Update :one
 UPDATE metrics
 SET ts    = $2,
