@@ -5,9 +5,11 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	chimiddleware "github.com/go-chi/chi/v5/middleware"
+	"github.com/jackc/pgx/v5"
 	"github.com/mikhailpashkov/metrics/internal/handler"
 	"github.com/mikhailpashkov/metrics/internal/handler/middleware"
 	"github.com/mikhailpashkov/metrics/internal/repository"
@@ -78,8 +80,26 @@ func main() {
 		"storeInterval", storeInterval,
 		"fileStoragePath", fileStoragePath,
 		"restore", restore,
-		"databaseDSN", databaseDSN,
+		"len(databaseDSN)", len(databaseDSN), // dont log sensitive data
 	)
+
+	// Database ///////////////////////
+	logger.Debug("connect to db")
+	conn, err := pgx.Connect(context.Background(), databaseDSN)
+	if err != nil {
+		logger.Error("failed to connect to DB", "err", err.Error())
+		os.Exit(1)
+	}
+	defer conn.Close(context.Background())
+
+	dbPingTimeoutCtx, cancelFunc := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancelFunc()
+
+	err = conn.Ping(dbPingTimeoutCtx)
+	if err != nil {
+		logger.Error("failed to ping DB", "err", err.Error())
+		os.Exit(1)
+	}
 
 	// Dependencies ///////////////////
 	logger.Debug("init dependencies")
@@ -108,7 +128,7 @@ func main() {
 		}
 	}
 	logger.Debug("setup runtime backup")
-	err := backupService.SetupBackup(context.Background(), storeInterval)
+	err = backupService.SetupBackup(context.Background(), storeInterval)
 	if err != nil {
 		logger.Error("failed to setup backup", "err", err)
 		os.Exit(1)
