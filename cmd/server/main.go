@@ -10,7 +10,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	chimiddleware "github.com/go-chi/chi/v5/middleware"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/mikhailpashkov/metrics/db/metrics"
+	dbmetrics "github.com/mikhailpashkov/metrics/db/metrics"
 	"github.com/mikhailpashkov/metrics/db/migrations"
 	"github.com/mikhailpashkov/metrics/internal/handler"
 	"github.com/mikhailpashkov/metrics/internal/handler/middleware"
@@ -87,12 +87,12 @@ func main() {
 
 	// Database ///////////////////////
 	wantDB := len(databaseDSN) != 0
-	var pgxPool *pgxpool.Pool
+	var dbQueries *dbmetrics.Queries
 	var err error
 	if wantDB {
 		logger.Debug("connect to db")
 
-		pgxPool, err = pgxpool.New(context.Background(), databaseDSN)
+		pgxPool, err := pgxpool.New(context.Background(), databaseDSN)
 		if err != nil {
 			logger.Error("failed to connect to DB", "err", err.Error())
 			os.Exit(1)
@@ -121,7 +121,7 @@ func main() {
 			os.Exit(1)
 		}
 
-		_ = metrics.New(pgxPool)
+		dbQueries = dbmetrics.New(pgxPool)
 	} else {
 		logger.Debug("empty databaseDSN, skip connect to db")
 	}
@@ -196,13 +196,13 @@ func main() {
 	))
 
 	if wantDB {
-		if pgxPool == nil {
-			logger.Error("nil db connection when wantDB")
+		if dbQueries == nil {
+			logger.Error("nil dbQueries when wantDB")
 			os.Exit(1)
 		}
 		r.Handle("/ping", handler.NewDBPingHandler(
 			logger.With(LoggerNameKey, "handler.DBPingHandler"),
-			pgxPool,
+			dbQueries,
 		))
 	}
 

@@ -6,18 +6,18 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/mikhailpashkov/metrics/db/metrics"
 )
 
 type DBPingHandler struct {
-	logger  *slog.Logger
-	pgxPool *pgxpool.Pool
+	logger    *slog.Logger
+	dbQueries *metrics.Queries
 }
 
-func NewDBPingHandler(logger *slog.Logger, pgxPool *pgxpool.Pool) *DBPingHandler {
+func NewDBPingHandler(logger *slog.Logger, dbQueries *metrics.Queries) *DBPingHandler {
 	return &DBPingHandler{
-		logger:  logger,
-		pgxPool: pgxPool,
+		logger:    logger,
+		dbQueries: dbQueries,
 	}
 }
 
@@ -31,9 +31,9 @@ func (h *DBPingHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	dbPingTimeoutCtx, cancelFunc := context.WithTimeout(r.Context(), 15*time.Second)
 	defer cancelFunc()
-	err := h.pgxPool.Ping(dbPingTimeoutCtx)
+	err := h.dbQueries.HealthCheck(dbPingTimeoutCtx)
 	if err != nil {
-		h.logger.Error("failed to ping DB", "err", err.Error())
+		h.logger.Error("failed to healthcheck DB", "err", err.Error())
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
