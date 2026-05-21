@@ -2,7 +2,6 @@ package repository
 
 import (
 	"context"
-	"errors"
 	"maps"
 	"slices"
 	"sync"
@@ -11,19 +10,15 @@ import (
 )
 
 type MetricsMemoryRepository struct {
-	storage         map[int64]*models.Metrics
-	lastId          int64
-	mu              sync.RWMutex
-	errNotFound     error
-	errMetricsIsNil error
+	storage map[int64]*models.Metrics
+	lastId  int64
+	mu      sync.RWMutex
 }
 
 func NewMetricsMemoryRepository() *MetricsMemoryRepository {
 	return &MetricsMemoryRepository{
-		storage:         make(map[int64]*models.Metrics),
-		lastId:          -1,
-		errNotFound:     errors.New("not found"),
-		errMetricsIsNil: errors.New("metrics is nil"),
+		storage: make(map[int64]*models.Metrics),
+		lastId:  -1,
 	}
 }
 
@@ -33,7 +28,7 @@ func (r *MetricsMemoryRepository) FindById(ctx context.Context, id int64) (*mode
 
 	metrics, ok := r.storage[id]
 	if !ok {
-		return nil, r.errNotFound
+		return nil, models.ErrNotFound
 	}
 	return metrics, nil
 }
@@ -59,7 +54,7 @@ func (r *MetricsMemoryRepository) FindAll(ctx context.Context) ([]*models.Metric
 
 func (r *MetricsMemoryRepository) Save(ctx context.Context, metrics *models.Metrics) (*models.Metrics, error) {
 	if metrics == nil {
-		return nil, r.errMetricsIsNil
+		return nil, models.ErrMetricsIsNil
 	}
 
 	r.mu.Lock()
@@ -75,7 +70,7 @@ func (r *MetricsMemoryRepository) Save(ctx context.Context, metrics *models.Metr
 
 func (r *MetricsMemoryRepository) InsertBatch(ctx context.Context, metrics []*models.Metrics) error {
 	if metrics == nil {
-		return r.errMetricsIsNil
+		return models.ErrMetricsIsNil
 	}
 
 	r.mu.Lock()

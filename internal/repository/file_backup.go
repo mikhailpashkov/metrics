@@ -44,7 +44,7 @@ func (r *FileBackupRepository) FindAll(ctx context.Context) ([]*models.BackupMet
 
 	err = json.Unmarshal(fileContent, &result)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to unmarshal file content: %w", err)
 	}
 
 	return result, nil

@@ -131,7 +131,7 @@ func main() {
 
 	var metricsRepository service.MetricsRepository
 	if wantDB {
-		metricsRepository = repository.NewMetricsDBRepository(metricsQuery)
+		metricsRepository = repository.NewMetricsDBRepository(metricsQuery, logger.With(LoggerNameKey, "repository.MetricsDBRepository"))
 	} else {
 		metricsRepository = repository.NewMetricsMemoryRepository()
 	}

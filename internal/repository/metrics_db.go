@@ -2,8 +2,8 @@ package repository
 
 import (
 	"context"
-	"errors"
 	"fmt"
+	"log/slog"
 
 	metricsdb "github.com/mikhailpashkov/metrics/db/metrics"
 	"github.com/mikhailpashkov/metrics/internal/mapper"
@@ -11,18 +11,18 @@ import (
 )
 
 type MetricsDBRepository struct {
-	metricsQuery    *metricsdb.Queries
-	errMetricsIsNil error
+	metricsQuery *metricsdb.Queries
+	logger       *slog.Logger
 }
 
-func NewMetricsDBRepository(metricsQuery *metricsdb.Queries) *MetricsDBRepository {
+func NewMetricsDBRepository(metricsQuery *metricsdb.Queries, logger *slog.Logger) *MetricsDBRepository {
 	return &MetricsDBRepository{
-		metricsQuery:    metricsQuery,
-		errMetricsIsNil: errors.New("metrics is nil"),
+		metricsQuery: metricsQuery,
+		logger:       logger,
 	}
 }
 
-func (r MetricsDBRepository) FindById(ctx context.Context, id int64) (*models.Metrics, error) {
+func (r *MetricsDBRepository) FindById(ctx context.Context, id int64) (*models.Metrics, error) {
 	metrics, err := r.metricsQuery.FindById(ctx, id)
 	if err != nil {
 		return nil, fmt.Errorf("failed to FindById metrics: %w", err)
@@ -30,7 +30,7 @@ func (r MetricsDBRepository) FindById(ctx context.Context, id int64) (*models.Me
 	return mapper.MetricsFromDB(&metrics), nil
 }
 
-func (r MetricsDBRepository) FindByName(ctx context.Context, name string) ([]*models.Metrics, error) {
+func (r *MetricsDBRepository) FindByName(ctx context.Context, name string) ([]*models.Metrics, error) {
 	metrics, err := r.metricsQuery.FindByName(ctx, name)
 	if err != nil {
 		return nil, fmt.Errorf("failed to FindByName metrics: %w", err)
@@ -38,7 +38,7 @@ func (r MetricsDBRepository) FindByName(ctx context.Context, name string) ([]*mo
 	return mapper.MetricsFromDBList(metrics), nil
 }
 
-func (r MetricsDBRepository) FindAll(ctx context.Context) ([]*models.Metrics, error) {
+func (r *MetricsDBRepository) FindAll(ctx context.Context) ([]*models.Metrics, error) {
 	metrics, err := r.metricsQuery.FindAll(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to FindAll metrics: %w", err)
@@ -46,54 +46,71 @@ func (r MetricsDBRepository) FindAll(ctx context.Context) ([]*models.Metrics, er
 	return mapper.MetricsFromDBList(metrics), nil
 }
 
-func (r MetricsDBRepository) Save(ctx context.Context, metrics *models.Metrics) (*models.Metrics, error) {
+func (r *MetricsDBRepository) Save(ctx context.Context, metrics *models.Metrics) (*models.Metrics, error) {
 	if metrics == nil {
-		return nil, r.errMetricsIsNil
+		return nil, models.ErrMetricsIsNil
 	}
 
 	var result metricsdb.Metric
-	var err error
-	isExist := metrics.ID != models.MetricsNewID
-	if isExist {
-		result, err = r.metricsQuery.Update(ctx, *mapper.MetricsToDBUpdateParams(metrics))
-	} else {
-		result, err = r.metricsQuery.Insert(ctx, *mapper.MetricsToDBInsertParams(metrics))
-	}
+	err := PGRetry(ctx, func() error {
+		var e error
+		isExist := metrics.ID != models.MetricsNewID
+		if isExist {
+			result, e = r.metricsQuery.Update(ctx, *mapper.MetricsToDBUpdateParams(metrics))
+		} else {
+			result, e = r.metricsQuery.Insert(ctx, *mapper.MetricsToDBInsertParams(metrics))
+		}
+		return e
+	}, r.logger)
+
 	if err != nil {
 		return nil, fmt.Errorf("failed to Save metrics: %w", err)
 	}
 	return mapper.MetricsFromDB(&result), nil
 }
 
-func (r MetricsDBRepository) InsertBatch(ctx context.Context, metrics []*models.Metrics) error {
+func (r *MetricsDBRepository) InsertBatch(ctx context.Context, metrics []*models.Metrics) error {
 	if metrics == nil {
-		return r.errMetricsIsNil
+		return models.ErrMetricsIsNil
+	}
+	if len(metrics) == 0 {
+		return nil
 	}
 	for _, m := range metrics {
 		if m == nil {
-			return r.errMetricsIsNil
+			return models.ErrMetricsIsNil
 		}
 	}
 
 	rows := mapper.MetricsToDBInsertBatchParamsList(metrics)
-	_, err := r.metricsQuery.InsertBatch(ctx, rows)
+	err := PGRetry(ctx, func() error {
+		_, err := r.metricsQuery.InsertBatch(ctx, rows)
+		return err
+	}, r.logger)
+
 	if err != nil {
 		return fmt.Errorf("failed to InsertBatch metrics: %w", err)
 	}
 	return nil
 }
 
-func (r MetricsDBRepository) DeleteAll(ctx context.Context) error {
-	return errors.New("DeleteAll not allowed")
+func (r *MetricsDBRepository) DeleteAll(ctx context.Context) error {
+	return models.ErrDeleteAllNotAllowed
 }
 
-func (r MetricsDBRepository) DeleteById(ctx context.Context, id int64) error {
-	rowsAffected, err := r.metricsQuery.DeleteById(ctx, id)
+func (r *MetricsDBRepository) DeleteById(ctx context.Context, id int64) error {
+	var rowsAffected int64
+	err := PGRetry(ctx, func() error {
+		var e error
+		rowsAffected, e = r.metricsQuery.DeleteById(ctx, id)
+		return e
+	}, r.logger)
+
 	if err != nil {
 		return fmt.Errorf("failed to DeleteById metrics: %w", err)
 	}
 	if rowsAffected == 0 {
-		return fmt.Errorf("no metrics with id %d was found", id)
+		return fmt.Errorf("not found metrics. id %d: %w", id, models.ErrNotFound)
 	}
 	return nil
 }
