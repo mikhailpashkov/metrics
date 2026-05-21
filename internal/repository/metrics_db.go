@@ -89,11 +89,11 @@ func (r MetricsDBRepository) DeleteAll(ctx context.Context) error {
 
 func (r MetricsDBRepository) DeleteById(ctx context.Context, id int64) error {
 	rowsAffected, err := r.metricsQuery.DeleteById(ctx, id)
-	if rowsAffected == 0 {
-		return fmt.Errorf("no metrics with id %d was found", id)
-	}
 	if err != nil {
 		return fmt.Errorf("failed to DeleteById metrics: %w", err)
+	}
+	if rowsAffected == 0 {
+		return fmt.Errorf("no metrics with id %d was found", id)
 	}
 	return nil
 }
