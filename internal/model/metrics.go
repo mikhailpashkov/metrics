@@ -5,6 +5,8 @@ const (
 	Gauge   = "gauge"
 )
 
+const MetricsNewID = -1
+
 type Metrics struct {
 	ID    int64    `json:"id"`
 	Type  string   `json:"type"`

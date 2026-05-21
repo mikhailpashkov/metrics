@@ -24,7 +24,7 @@ func (p *PollCountPoller) GetMetrics() ([]*models.Metrics, error) {
 	defer p.mux.Unlock()
 	return []*models.Metrics{
 		{
-			ID:    -1,
+			ID:    models.MetricsNewID,
 			Type:  models.Counter,
 			Name:  "PollCount",
 			Delta: &p.count,

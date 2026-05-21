@@ -53,7 +53,7 @@ func (r MetricsDBRepository) Save(ctx context.Context, metrics *models.Metrics) 
 
 	var result metricsdb.Metric
 	var err error
-	isExist := metrics.ID != -1
+	isExist := metrics.ID != models.MetricsNewID
 	if isExist {
 		result, err = r.metricsQuery.Update(ctx, *mapper.MetricsToDBUpdateParams(metrics))
 	} else {

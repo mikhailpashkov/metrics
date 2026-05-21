@@ -27,7 +27,7 @@ func MetricsToUpdateMetricsRequest(metrics *models.Metrics) *dto.UpdateMetricsRe
 
 func MetricsFromMetricsDto(dto dto.MetricsDto) *models.Metrics {
 	return &models.Metrics{
-		ID:    -1,
+		ID:    models.MetricsNewID,
 		Type:  dto.Type,
 		Name:  dto.ID,
 		Delta: dto.Delta,

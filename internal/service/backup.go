@@ -51,7 +51,7 @@ func (bs *BackupServiceImpl) Restore(ctx context.Context) error {
 	errs := make([]error, 0)
 	for _, bMetrics := range restoredMetrics {
 		toSave := &models.Metrics{
-			ID:    -1,
+			ID:    models.MetricsNewID,
 			Type:  bMetrics.Type,
 			Name:  bMetrics.ID,
 			Delta: bMetrics.Delta,

@@ -15,7 +15,7 @@ func (p *RandomValuePoller) GetMetrics() ([]*models.Metrics, error) {
 	randomValue := rand.Float64()
 	return []*models.Metrics{
 		{
-			ID:    -1,
+			ID:    models.MetricsNewID,
 			Type:  models.Gauge,
 			Name:  "RandomValue",
 			Delta: nil,

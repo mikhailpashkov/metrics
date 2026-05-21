@@ -70,7 +70,7 @@ func (ms *MetricsServiceImpl) UpdateMetricsBatch(ctx context.Context, metricsMod
 
 func (ms *MetricsServiceImpl) UpdateCounter(ctx context.Context, name string, delta int64) (*models.Metrics, error) {
 	return ms.UpdateMetrics(ctx, &models.Metrics{
-		ID:    -1,
+		ID:    models.MetricsNewID,
 		Type:  models.Counter,
 		Name:  name,
 		Delta: &delta,
@@ -80,7 +80,7 @@ func (ms *MetricsServiceImpl) UpdateCounter(ctx context.Context, name string, de
 
 func (ms *MetricsServiceImpl) UpdateGauge(ctx context.Context, name string, value float64) (*models.Metrics, error) {
 	return ms.UpdateMetrics(ctx, &models.Metrics{
-		ID:    -1,
+		ID:    models.MetricsNewID,
 		Type:  models.Gauge,
 		Name:  name,
 		Value: &value,
@@ -131,7 +131,7 @@ func (ms *MetricsServiceImpl) GetAllAccumulated(ctx context.Context) ([]*models.
 				accumulatedDelta += *record.Delta
 			}
 			accumulatedMetric := &models.Metrics{
-				ID:    -1,
+				ID:    models.MetricsNewID,
 				Type:  models.Counter,
 				Name:  name,
 				Delta: &accumulatedDelta,

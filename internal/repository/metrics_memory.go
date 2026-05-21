@@ -65,7 +65,7 @@ func (r *MetricsMemoryRepository) Save(ctx context.Context, metrics *models.Metr
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
-	if metrics.ID == -1 {
+	if metrics.ID == models.MetricsNewID {
 		r.lastId++
 		metrics.ID = r.lastId
 	}
