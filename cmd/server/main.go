@@ -207,10 +207,6 @@ func main() {
 	))
 
 	if wantDB {
-		if metricsQuery == nil {
-			logger.Error("nil metricsQuery when wantDB")
-			os.Exit(1)
-		}
 		r.Handle("/ping", handler.NewDBPingHandler(
 			logger.With(LoggerNameKey, "handler.DBPingHandler"),
 			metricsQuery,
