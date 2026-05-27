@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"fmt"
 	"log/slog"
 	"net/http"
 	"strconv"
@@ -46,7 +45,7 @@ func (m *UpdateMetricsPathParamsHandler) ServeHTTP(w http.ResponseWriter, r *htt
 	case models.Counter:
 		parseInt, err := strconv.ParseInt(valueStr, 10, 64)
 		if err != nil {
-			http.Error(w, fmt.Sprintf("Value conversion error: %s", err), http.StatusBadRequest)
+			http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
 			return
 		}
 
@@ -68,7 +67,7 @@ func (m *UpdateMetricsPathParamsHandler) ServeHTTP(w http.ResponseWriter, r *htt
 		parseFloat, err := strconv.ParseFloat(valueStr, 64)
 		if err != nil {
 			m.logger.Error("Value conversion error", "err", err)
-			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusBadRequest)
+			http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
 			return
 		}
 
