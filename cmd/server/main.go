@@ -5,10 +5,13 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	chimiddleware "github.com/go-chi/chi/v5/middleware"
-	"github.com/mikhailpashkov/metrics/db/initialiser"
+	"github.com/jackc/pgx/v5/pgxpool"
+	dbmetrics "github.com/mikhailpashkov/metrics/db/metrics"
+	"github.com/mikhailpashkov/metrics/db/migrations"
 	"github.com/mikhailpashkov/metrics/internal/handler"
 	"github.com/mikhailpashkov/metrics/internal/handler/middleware"
 	"github.com/mikhailpashkov/metrics/internal/repository"
@@ -84,15 +87,41 @@ func main() {
 
 	// Database ///////////////////////
 	wantDB := len(databaseDSN) != 0
-	var dbQueries initialiser.Queries
+	var metricsQuery *dbmetrics.Queries
 	var err error
 	if wantDB {
-		queries, err := initialiser.InitialiseDB(logger.With(LoggerNameKey, "initialiser.InitialiseDB"), databaseDSN)
+		logger.Debug("connect to db")
+
+		pgxPool, err := pgxpool.New(context.Background(), databaseDSN)
 		if err != nil {
-			logger.Error("failed to initialise db queries", "err", err)
+			logger.Error("failed to connect to DB", "err", err.Error())
 			os.Exit(1)
 		}
-		dbQueries = *queries
+		defer pgxPool.Close()
+
+		logger.Debug("test db connection")
+
+		dbPingTimeoutCtx, cancelFunc := context.WithTimeout(
+			context.Background(),
+			15*time.Second,
+		)
+		defer cancelFunc()
+
+		if err = pgxPool.Ping(dbPingTimeoutCtx); err != nil {
+			logger.Error("failed to ping DB", "err", err.Error())
+			os.Exit(1)
+		}
+
+		err = migrations.RunMigrations(
+			logger.With(LoggerNameKey, "migrations"),
+			pgxPool,
+		)
+		if err != nil {
+			logger.Error("failed to run migrations", "err", err.Error())
+			os.Exit(1)
+		}
+
+		metricsQuery = dbmetrics.New(pgxPool)
 	} else {
 		logger.Debug("empty databaseDSN, skip connect to db")
 	}
@@ -102,7 +131,7 @@ func main() {
 
 	var metricsRepository service.MetricsRepository
 	if wantDB {
-		metricsRepository = repository.NewMetricsDBRepository(dbQueries.Metrics, logger.With(LoggerNameKey, "repository.MetricsDBRepository"))
+		metricsRepository = repository.NewMetricsDBRepository(metricsQuery, logger.With(LoggerNameKey, "repository.MetricsDBRepository"))
 	} else {
 		metricsRepository = repository.NewMetricsMemoryRepository()
 	}
@@ -180,7 +209,7 @@ func main() {
 	if wantDB {
 		r.Get("/ping", handler.NewDBPingHandlerFunc(
 			logger.With(LoggerNameKey, "handler.DBPingHandler"),
-			dbQueries.Metrics,
+			metricsQuery,
 		))
 	}
 
