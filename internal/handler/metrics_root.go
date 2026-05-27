@@ -9,11 +9,6 @@ import (
 	"github.com/mikhailpashkov/metrics/internal/service"
 )
 
-type MetricsRootHandler struct {
-	logger         *slog.Logger
-	metricsService service.MetricsService
-}
-
 const htmlTemplate = `<html>
 <head>
   <meta charset="utf-8">
@@ -48,40 +43,30 @@ const htmlTemplate = `<html>
 `
 
 func NewMetricsRootHandlerFunc(logger *slog.Logger, metricsService service.MetricsService) http.HandlerFunc {
-	return MetricsRootHandler{
-		logger:         logger,
-		metricsService: metricsService,
-	}.serveHTTP
-}
+	return func(w http.ResponseWriter, r *http.Request) {
+		accumulated, err := metricsService.GetAllAccumulated(r.Context())
+		if err != nil {
+			logger.Error("Error getting all accumulated metrics", "err", err)
+			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+			return
+		}
+		sort.Slice(accumulated, func(i, j int) bool {
+			return accumulated[i].Name < accumulated[j].Name
+		})
 
-func (m *MetricsRootHandler) serveHTTP(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
-		http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
-		return
-	}
+		w.Header().Set("Content-Type", "text/html")
 
-	accumulated, err := m.metricsService.GetAllAccumulated(r.Context())
-	if err != nil {
-		m.logger.Error("Error getting all accumulated metrics", "err", err)
-		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-		return
-	}
-	sort.Slice(accumulated, func(i, j int) bool {
-		return accumulated[i].Name < accumulated[j].Name
-	})
-
-	w.Header().Set("Content-Type", "text/html")
-
-	tmpl, err := template.New("metrics").Parse(htmlTemplate)
-	if err != nil {
-		m.logger.Error("Failed to parse template", "err", err)
-		http.Error(w, "template parse error", http.StatusInternalServerError)
-		return
-	}
-	err = tmpl.Execute(w, accumulated)
-	if err != nil {
-		m.logger.Error("Failed to execute template", "err", err)
-		http.Error(w, "template execute error", http.StatusInternalServerError)
-		return
+		tmpl, err := template.New("metrics").Parse(htmlTemplate)
+		if err != nil {
+			logger.Error("Failed to parse template", "err", err)
+			http.Error(w, "template parse error", http.StatusInternalServerError)
+			return
+		}
+		err = tmpl.Execute(w, accumulated)
+		if err != nil {
+			logger.Error("Failed to execute template", "err", err)
+			http.Error(w, "template execute error", http.StatusInternalServerError)
+			return
+		}
 	}
 }

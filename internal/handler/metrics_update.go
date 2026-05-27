@@ -11,67 +11,53 @@ import (
 	"github.com/mikhailpashkov/metrics/internal/service"
 )
 
-type UpdateMetricsHandler struct {
-	logger         *slog.Logger
-	metricsService service.MetricsService
-}
-
 func NewUpdateMetricsHandlerFunc(logger *slog.Logger, metricsService service.MetricsService) http.HandlerFunc {
-	return UpdateMetricsHandler{
-		logger:         logger,
-		metricsService: metricsService,
-	}.serveHTTP
-}
+	return func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
 
-func (m *UpdateMetricsHandler) serveHTTP(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-	if r.Method != http.MethodPost {
-		m.logger.Debug("Method not allowed")
-		http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
-		return
-	}
+		var request dto.UpdateMetricsRequest
 
-	var request dto.UpdateMetricsRequest
+		defer r.Body.Close()
+		err := json.NewDecoder(r.Body).Decode(&request)
+		if err != nil {
+			logger.Debug("Error decoding body", "err", err)
+			http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
+			return
+		}
 
-	defer r.Body.Close()
-	err := json.NewDecoder(r.Body).Decode(&request)
-	if err != nil {
-		m.logger.Debug("Error decoding body", "err", err)
-		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
-		return
-	}
+		if request.Type == "" {
+			logger.Debug("Invalid request: Empty type")
+			http.Error(w, "Invalid request: Empty type", http.StatusBadRequest)
+			return
+		}
 
-	if request.Type == "" {
-		m.logger.Debug("Invalid request: Empty type")
-		http.Error(w, "Invalid request: Empty type", http.StatusBadRequest)
-		return
-	}
+		if request.ID == "" {
+			logger.Debug("Invalid request: Empty name")
+			http.Error(w, "Invalid request: Empty name", http.StatusBadRequest)
+			return
+		}
 
-	if request.ID == "" {
-		m.logger.Debug("Invalid request: Empty name")
-		http.Error(w, "Invalid request: Empty name", http.StatusBadRequest)
-		return
-	}
+		metrics := mapper.MetricsFromUpdateMetricsRequest(request)
 
-	metrics := mapper.MetricsFromUpdateMetricsRequest(request)
+		isValid := models.IsValidMetrics(metrics)
+		if !isValid {
+			logger.Debug("Metric type doesnt match its content")
+			http.Error(w, "Metric type doesnt match its content", http.StatusBadRequest)
+			return
+		}
 
-	isValid := models.IsValidMetrics(metrics)
-	if !isValid {
-		m.logger.Debug("Metric type doesnt match its content")
-		http.Error(w, "Metric type doesnt match its content", http.StatusBadRequest)
-		return
-	}
+		_, err = metricsService.UpdateMetrics(r.Context(), metrics)
+		if err != nil {
+			logger.Error("Value update error", "err", err)
+			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+			return
+		}
 
-	_, err = m.metricsService.UpdateMetrics(r.Context(), metrics)
-	if err != nil {
-		m.logger.Error("Value update error", "err", err)
-		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-		return
-	}
+		_, err = w.Write([]byte("{}"))
+		if err != nil {
+			logger.Error("failed to write response", "err", err)
+			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		}
 
-	_, err = w.Write([]byte("{}"))
-	if err != nil {
-		m.logger.Error("failed to write response", "err", err)
-		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 	}
 }

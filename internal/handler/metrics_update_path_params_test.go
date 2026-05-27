@@ -18,10 +18,10 @@ func TestUpdateMetricsHandler_ServeHTTP(t *testing.T) {
 	metricsRepository := repository.NewMetricsMemoryRepository()
 	eventService := service.NewInMemoryEventService(slog.Default())
 	svc := service.NewMetricsService(slog.Default(), metricsRepository, eventService)
-	handler := NewUpdateMetricsPathParamsHandler(slog.Default(), svc)
+	handlerFn := NewUpdateMetricsPathParamsHandlerFunc(slog.Default(), svc)
 
 	mux := http.NewServeMux()
-	mux.Handle("/update/{type}/{name}/{value}", handler)
+	mux.Handle("/update/{type}/{name}/{value}", handlerFn)
 
 	tests := []struct {
 		name       string
