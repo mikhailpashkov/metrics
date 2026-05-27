@@ -81,7 +81,6 @@ const findByName = `-- name: FindByName :many
 SELECT id, ts, type, name, delta, value
 FROM metrics
 WHERE name = $1
-LIMIT 1
 `
 
 func (q *Queries) FindByName(ctx context.Context, name string) ([]Metric, error) {
