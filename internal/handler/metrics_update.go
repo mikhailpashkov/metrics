@@ -16,14 +16,14 @@ type UpdateMetricsHandler struct {
 	metricsService service.MetricsService
 }
 
-func NewUpdateMetricsHandler(logger *slog.Logger, metricsService service.MetricsService) *UpdateMetricsHandler {
-	return &UpdateMetricsHandler{
+func NewUpdateMetricsHandlerFunc(logger *slog.Logger, metricsService service.MetricsService) http.HandlerFunc {
+	return UpdateMetricsHandler{
 		logger:         logger,
 		metricsService: metricsService,
-	}
+	}.serveHTTP
 }
 
-func (m *UpdateMetricsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (m *UpdateMetricsHandler) serveHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	if r.Method != http.MethodPost {
 		m.logger.Debug("Method not allowed")

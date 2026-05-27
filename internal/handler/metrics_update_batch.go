@@ -17,14 +17,14 @@ type UpdateMetricsBatchHandler struct {
 	metricsService service.MetricsService
 }
 
-func NewUpdateMetricsBatchHandler(logger *slog.Logger, metricsService service.MetricsService) *UpdateMetricsBatchHandler {
-	return &UpdateMetricsBatchHandler{
+func NewUpdateMetricsBatchHandlerFunc(logger *slog.Logger, metricsService service.MetricsService) http.HandlerFunc {
+	return UpdateMetricsBatchHandler{
 		logger:         logger,
 		metricsService: metricsService,
-	}
+	}.serveHttp
 }
 
-func (m *UpdateMetricsBatchHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (m *UpdateMetricsBatchHandler) serveHttp(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	if r.Method != http.MethodPost {
 		m.logger.Debug("Method not allowed")

@@ -14,14 +14,14 @@ type DBPingHandler struct {
 	dbQueries *metrics.Queries
 }
 
-func NewDBPingHandler(logger *slog.Logger, dbQueries *metrics.Queries) *DBPingHandler {
-	return &DBPingHandler{
+func NewDBPingHandlerFunc(logger *slog.Logger, dbQueries *metrics.Queries) http.HandlerFunc {
+	return DBPingHandler{
 		logger:    logger,
 		dbQueries: dbQueries,
-	}
+	}.serveHTTP
 }
 
-func (h *DBPingHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (h *DBPingHandler) serveHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	if r.Method != http.MethodGet {
 		h.logger.Debug("Method not allowed")

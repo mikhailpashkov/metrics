@@ -14,18 +14,14 @@ type GetMetricsPathParamsHandler struct {
 	metricsService service.MetricsService
 }
 
-func NewGetMetricsPathParamsHandler(logger *slog.Logger, metricsService service.MetricsService) *GetMetricsPathParamsHandler {
-	return &GetMetricsPathParamsHandler{
+func NewGetMetricsPathParamsHandlerFunc(logger *slog.Logger, metricsService service.MetricsService) http.HandlerFunc {
+	return GetMetricsPathParamsHandler{
 		logger:         logger,
 		metricsService: metricsService,
-	}
+	}.serveHTTP
 }
 
-func (m *GetMetricsPathParamsHandler) GetUrlPatterns() []string {
-	return []string{"/value/{type}/{name}"}
-}
-
-func (m *GetMetricsPathParamsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (m *GetMetricsPathParamsHandler) serveHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/plain")
 	if r.Method != http.MethodGet {
 		http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)

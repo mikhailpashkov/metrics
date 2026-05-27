@@ -47,14 +47,14 @@ const htmlTemplate = `<html>
 </html>
 `
 
-func NewMetricsRootHandler(logger *slog.Logger, metricsService service.MetricsService) *MetricsRootHandler {
-	return &MetricsRootHandler{
+func NewMetricsRootHandlerFunc(logger *slog.Logger, metricsService service.MetricsService) http.HandlerFunc {
+	return MetricsRootHandler{
 		logger:         logger,
 		metricsService: metricsService,
-	}
+	}.serveHTTP
 }
 
-func (m *MetricsRootHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (m *MetricsRootHandler) serveHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
 		return

@@ -179,38 +179,38 @@ func main() {
 	// для фикса автотестов в iter7: там, зачем-то, в конце слеши приделали на клиенте
 	r.Use(chimiddleware.StripSlashes)
 
-	r.Get("/", handler.NewMetricsRootHandler(
+	r.Get("/", handler.NewMetricsRootHandlerFunc(
 		logger.With(LoggerNameKey, "handler.MetricsRootHandler"),
 		metricsService,
-	).ServeHTTP)
+	))
 
-	r.Post("/value", handler.NewGetMetricsHandler(
+	r.Post("/value", handler.NewGetMetricsHandlerFunc(
 		logger.With(LoggerNameKey, "handler.GetMetricsHandler"),
 		metricsService,
-	).ServeHTTP)
-	r.Get("/value/{type}/{name}", handler.NewGetMetricsPathParamsHandler(
+	))
+	r.Get("/value/{type}/{name}", handler.NewGetMetricsPathParamsHandlerFunc(
 		logger.With(LoggerNameKey, "handler.GetMetricsPathParamsHandler"),
 		metricsService,
-	).ServeHTTP)
+	))
 
-	r.Post("/update", handler.NewUpdateMetricsHandler(
+	r.Post("/update", handler.NewUpdateMetricsHandlerFunc(
 		logger.With(LoggerNameKey, "handler.UpdateMetricsHandler"),
 		metricsService,
-	).ServeHTTP)
-	r.Post("/update/{type}/{name}/{value}", handler.NewUpdateMetricsPathParamsHandler(
+	))
+	r.Post("/update/{type}/{name}/{value}", handler.NewUpdateMetricsPathParamsHandlerFunc(
 		logger.With(LoggerNameKey, "handler.UpdateMetricsPathParamsHandler"),
 		metricsService,
-	).ServeHTTP)
-	r.Post("/updates", handler.NewUpdateMetricsBatchHandler(
+	))
+	r.Post("/updates", handler.NewUpdateMetricsBatchHandlerFunc(
 		logger.With(LoggerNameKey, "handler.NewUpdateMetricsBatchHandler"),
 		metricsService,
-	).ServeHTTP)
+	))
 
 	if wantDB {
-		r.Get("/ping", handler.NewDBPingHandler(
+		r.Get("/ping", handler.NewDBPingHandlerFunc(
 			logger.With(LoggerNameKey, "handler.DBPingHandler"),
 			metricsQuery,
-		).ServeHTTP)
+		))
 	}
 
 	err = http.ListenAndServe(addr, r)

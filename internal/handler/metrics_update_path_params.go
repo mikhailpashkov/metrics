@@ -14,14 +14,14 @@ type UpdateMetricsPathParamsHandler struct {
 	metricsService service.MetricsService
 }
 
-func NewUpdateMetricsPathParamsHandler(logger *slog.Logger, metricsService service.MetricsService) *UpdateMetricsPathParamsHandler {
-	return &UpdateMetricsPathParamsHandler{
+func NewUpdateMetricsPathParamsHandlerFunc(logger *slog.Logger, metricsService service.MetricsService) http.HandlerFunc {
+	return UpdateMetricsPathParamsHandler{
 		logger:         logger,
 		metricsService: metricsService,
-	}
+	}.serveHTTP
 }
 
-func (m *UpdateMetricsPathParamsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (m *UpdateMetricsPathParamsHandler) serveHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
 		return
