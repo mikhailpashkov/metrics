@@ -5,9 +5,9 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
-	"strconv"
 	"time"
 
+	"github.com/mikhailpashkov/metrics/internal/dto"
 	"github.com/mikhailpashkov/metrics/internal/mapper"
 	models "github.com/mikhailpashkov/metrics/internal/model"
 	"resty.dev/v3"
@@ -29,37 +29,27 @@ func NewBackendReporter(address string, logger *slog.Logger) *BackendReporter {
 	}
 }
 
-func (r *BackendReporter) GetLogger() *slog.Logger {
-	return r.logger
-}
-
-func (r *BackendReporter) SendMetrics(metrics *models.Metrics) error {
-	if metrics == nil {
-		return fmt.Errorf("metrics cannot be nil")
+func (r *BackendReporter) SendMetrics(metrics []*models.Metrics) error {
+	if len(metrics) == 0 {
+		return nil
 	}
 
-	var metricsValue string
-
-	switch metrics.Type {
-	case models.Counter:
-		if metrics.Delta == nil {
-			return fmt.Errorf("metrics delta is nil")
+	metricsDtos := make([]dto.MetricsDto, len(metrics))
+	for i, m := range metrics {
+		if m == nil {
+			return fmt.Errorf("metrics cannot be nil")
 		}
-		metricsValue = strconv.FormatInt(*metrics.Delta, 10)
-	case models.Gauge:
-		if metrics.Value == nil {
-			return fmt.Errorf("metrics value is nil")
+		if !models.IsValidMetrics(m) {
+			return fmt.Errorf("invalid %s", m.Name)
 		}
-		metricsValue = strconv.FormatFloat(*metrics.Value, 'f', -1, 64)
-	default:
-		return fmt.Errorf("unknown metric type: %s", metrics.Type)
+		metricsDtos[i] = mapper.MetricsToMetricsDto(m)
 	}
 
-	updateUrl := fmt.Sprintf("http://%s/update",
+	updateUrl := fmt.Sprintf("http://%s/updates",
 		r.address,
 	)
 
-	requestBody := mapper.MetricsToUpdateMetricsRequest(metrics)
+	requestBody := dto.UpdateMetricsBatchRequest(metricsDtos)
 
 	request := r.client.R().
 		SetHeader("Content-Type", "application/json").
@@ -86,12 +76,7 @@ func (r *BackendReporter) SendMetrics(metrics *models.Metrics) error {
 		return fmt.Errorf("update metrics failed: unexpected status %d: %s", resp.StatusCode(), string(body))
 	}
 
-	r.GetLogger().Debug(
-		"sent update",
-		"type", metrics.Type,
-		"name", metrics.Name,
-		"value", metricsValue,
-	)
+	r.logger.Debug("update metrics successfully", "count", len(metricsDtos))
 
 	return nil
 }

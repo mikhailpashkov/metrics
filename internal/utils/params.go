@@ -41,11 +41,11 @@ type BoolParam struct {
 
 func (param *StringParam) do() PendingFlagParse {
 	value := os.Getenv(param.EnvName)
+	valuePtr := flag.String(param.FlagName, param.Default, param.FlagUsage)
 	if value != "" {
 		param.ValueConsumer(value)
 		return nil
 	}
-	valuePtr := flag.String(param.FlagName, param.Default, param.FlagUsage)
 	return func() {
 		param.ValueConsumer(*valuePtr)
 	}
@@ -53,6 +53,7 @@ func (param *StringParam) do() PendingFlagParse {
 
 func (param *IntParam) do() PendingFlagParse {
 	value := os.Getenv(param.EnvName)
+	valuePtr := flag.Int(param.FlagName, param.Default, param.FlagUsage)
 	if value != "" {
 		i, err := strconv.Atoi(value)
 		if err != nil {
@@ -61,7 +62,6 @@ func (param *IntParam) do() PendingFlagParse {
 		param.ValueConsumer(i)
 		return nil
 	}
-	valuePtr := flag.Int(param.FlagName, param.Default, param.FlagUsage)
 	return func() {
 		param.ValueConsumer(*valuePtr)
 	}
@@ -69,6 +69,7 @@ func (param *IntParam) do() PendingFlagParse {
 
 func (param *BoolParam) do() PendingFlagParse {
 	value := os.Getenv(param.EnvName)
+	valuePtr := flag.Bool(param.FlagName, param.Default, param.FlagUsage)
 	if value != "" {
 		switch value {
 		case "true":
@@ -80,7 +81,6 @@ func (param *BoolParam) do() PendingFlagParse {
 		}
 		return nil
 	}
-	valuePtr := flag.Bool(param.FlagName, param.Default, param.FlagUsage)
 	return func() {
 		param.ValueConsumer(*valuePtr)
 	}

@@ -25,13 +25,26 @@ func MetricsToUpdateMetricsRequest(metrics *models.Metrics) *dto.UpdateMetricsRe
 	}
 }
 
-func MetricsFromUpdateMetricsRequest(request dto.UpdateMetricsRequest) *models.Metrics {
+func MetricsFromMetricsDto(dto dto.MetricsDto) *models.Metrics {
 	return &models.Metrics{
-		ID:    -1,
-		Type:  request.Type,
-		Name:  request.ID,
-		Delta: request.Delta,
-		Value: request.Value,
+		ID:    models.MetricsNewID,
+		Type:  dto.Type,
+		Name:  dto.ID,
+		Delta: dto.Delta,
+		Value: dto.Value,
 		TS:    time.Now().UnixMilli(),
 	}
+}
+
+func MetricsToMetricsDto(m *models.Metrics) dto.MetricsDto {
+	return dto.MetricsDto{
+		Type:  m.Type,
+		ID:    m.Name,
+		Delta: m.Delta,
+		Value: m.Value,
+	}
+}
+
+func MetricsFromUpdateMetricsRequest(request dto.UpdateMetricsRequest) *models.Metrics {
+	return MetricsFromMetricsDto(dto.MetricsDto(request))
 }

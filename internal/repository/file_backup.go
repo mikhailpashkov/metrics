@@ -12,11 +12,6 @@ import (
 	models "github.com/mikhailpashkov/metrics/internal/model"
 )
 
-type BackupRepository interface {
-	FindAll(ctx context.Context) ([]*models.BackupMetrics, error)
-	SaveAll(ctx context.Context, metrics []*models.BackupMetrics) error
-}
-
 type FileBackupRepository struct {
 	filePath string
 	mu       sync.RWMutex
@@ -49,7 +44,7 @@ func (r *FileBackupRepository) FindAll(ctx context.Context) ([]*models.BackupMet
 
 	err = json.Unmarshal(fileContent, &result)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to unmarshal file content: %w", err)
 	}
 
 	return result, nil

@@ -5,9 +5,13 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/go-chi/chi/v5"
-	chi_middleware "github.com/go-chi/chi/v5/middleware"
+	chimiddleware "github.com/go-chi/chi/v5/middleware"
+	"github.com/jackc/pgx/v5/pgxpool"
+	dbmetrics "github.com/mikhailpashkov/metrics/db/metrics"
+	"github.com/mikhailpashkov/metrics/db/migrations"
 	"github.com/mikhailpashkov/metrics/internal/handler"
 	"github.com/mikhailpashkov/metrics/internal/handler/middleware"
 	"github.com/mikhailpashkov/metrics/internal/repository"
@@ -33,6 +37,8 @@ func main() {
 	var storeInterval int
 	var fileStoragePath string
 	var restore bool
+	var databaseDSN string
+
 	utils.GetParams([]utils.Param{
 		&utils.StringParam{
 			EnvName:       "ADDRESS",
@@ -59,8 +65,15 @@ func main() {
 			EnvName:       "RESTORE",
 			FlagName:      "r",
 			FlagUsage:     "Restore backup on startup",
-			Default:       true,
+			Default:       false,
 			ValueConsumer: func(v bool) { restore = v },
+		},
+		&utils.StringParam{
+			EnvName:       "DATABASE_DSN",
+			FlagName:      "d",
+			FlagUsage:     "Database connection string",
+			Default:       "",
+			ValueConsumer: func(v string) { databaseDSN = v },
 		},
 	})
 
@@ -69,11 +82,60 @@ func main() {
 		"storeInterval", storeInterval,
 		"fileStoragePath", fileStoragePath,
 		"restore", restore,
+		"len(databaseDSN)", len(databaseDSN), // dont log sensitive data
 	)
+
+	// Database ///////////////////////
+	wantDB := len(databaseDSN) != 0
+	var metricsQuery *dbmetrics.Queries
+	var err error
+	if wantDB {
+		logger.Debug("connect to db")
+
+		pgxPool, err := pgxpool.New(context.Background(), databaseDSN)
+		if err != nil {
+			logger.Error("failed to connect to DB", "err", err.Error())
+			os.Exit(1)
+		}
+		defer pgxPool.Close()
+
+		logger.Debug("test db connection")
+
+		dbPingTimeoutCtx, cancelFunc := context.WithTimeout(
+			context.Background(),
+			15*time.Second,
+		)
+		defer cancelFunc()
+
+		if err = pgxPool.Ping(dbPingTimeoutCtx); err != nil {
+			logger.Error("failed to ping DB", "err", err.Error())
+			os.Exit(1)
+		}
+
+		err = migrations.RunMigrations(
+			logger.With(LoggerNameKey, "migrations"),
+			pgxPool,
+		)
+		if err != nil {
+			logger.Error("failed to run migrations", "err", err.Error())
+			os.Exit(1)
+		}
+
+		metricsQuery = dbmetrics.New(pgxPool)
+	} else {
+		logger.Debug("empty databaseDSN, skip connect to db")
+	}
 
 	// Dependencies ///////////////////
 	logger.Debug("init dependencies")
-	metricsRepository := repository.NewMetricsMemoryRepository()
+
+	var metricsRepository service.MetricsRepository
+	if wantDB {
+		metricsRepository = repository.NewMetricsDBRepository(metricsQuery, logger.With(LoggerNameKey, "repository.MetricsDBRepository"))
+	} else {
+		metricsRepository = repository.NewMetricsMemoryRepository()
+	}
+
 	backupRepository := repository.NewFileBackupRepository(fileStoragePath)
 	eventService := service.NewInMemoryEventService(logger.With(LoggerNameKey, "service.NewInMemoryEventService"))
 	metricsService := service.NewMetricsService(
@@ -98,7 +160,7 @@ func main() {
 		}
 	}
 	logger.Debug("setup runtime backup")
-	err := backupService.SetupBackup(context.Background(), storeInterval)
+	err = backupService.SetupBackup(context.Background(), storeInterval)
 	if err != nil {
 		logger.Error("failed to setup backup", "err", err)
 		os.Exit(1)
@@ -115,30 +177,41 @@ func main() {
 	r.Use(middleware.WithGZIPSupport(logger.With(LoggerNameKey, "middleware.WithGZIPSupport")))
 
 	// для фикса автотестов в iter7: там, зачем-то, в конце слеши приделали на клиенте
-	r.Use(chi_middleware.StripSlashes)
+	r.Use(chimiddleware.StripSlashes)
 
-	r.Handle("/", handler.NewMetricsRootHandler(
+	r.Get("/", handler.NewMetricsRootHandlerFunc(
 		logger.With(LoggerNameKey, "handler.MetricsRootHandler"),
 		metricsService,
 	))
 
-	r.Handle("/value", handler.NewGetMetricsHandler(
+	r.Post("/value", handler.NewGetMetricsHandlerFunc(
 		logger.With(LoggerNameKey, "handler.GetMetricsHandler"),
 		metricsService,
 	))
-	r.Handle("/value/{type}/{name}", handler.NewGetMetricsPathParamsHandler(
+	r.Get("/value/{type}/{name}", handler.NewGetMetricsPathParamsHandlerFunc(
 		logger.With(LoggerNameKey, "handler.GetMetricsPathParamsHandler"),
 		metricsService,
 	))
 
-	r.Handle("/update", handler.NewUpdateMetricsHandler(
+	r.Post("/update", handler.NewUpdateMetricsHandlerFunc(
 		logger.With(LoggerNameKey, "handler.UpdateMetricsHandler"),
 		metricsService,
 	))
-	r.Handle("/update/{type}/{name}/{value}", handler.NewUpdateMetricsPathParamsHandler(
+	r.Post("/update/{type}/{name}/{value}", handler.NewUpdateMetricsPathParamsHandlerFunc(
 		logger.With(LoggerNameKey, "handler.UpdateMetricsPathParamsHandler"),
 		metricsService,
 	))
+	r.Post("/updates", handler.NewUpdateMetricsBatchHandlerFunc(
+		logger.With(LoggerNameKey, "handler.NewUpdateMetricsBatchHandler"),
+		metricsService,
+	))
+
+	if wantDB {
+		r.Get("/ping", handler.NewDBPingHandlerFunc(
+			logger.With(LoggerNameKey, "handler.DBPingHandler"),
+			metricsQuery,
+		))
+	}
 
 	err = http.ListenAndServe(addr, r)
 	if err != nil {

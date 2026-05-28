@@ -6,11 +6,17 @@ import (
 	"os"
 	"time"
 
-	"github.com/mikhailpashkov/metrics/internal/agent/poller"
-	"github.com/mikhailpashkov/metrics/internal/agent/reporter"
 	models "github.com/mikhailpashkov/metrics/internal/model"
 	"github.com/mikhailpashkov/metrics/internal/service"
 )
+
+type MetricsPoller interface {
+	GetMetrics() ([]*models.Metrics, error)
+}
+
+type MetricsReporter interface {
+	SendMetrics(metrics []*models.Metrics) error
+}
 
 type MetricsCollectorParams struct {
 	PollInterval   time.Duration
@@ -22,16 +28,16 @@ type MetricsCollectorParams struct {
 type MetricsCollector struct {
 	logger   *slog.Logger
 	service  service.MetricsService
-	pollers  []poller.MetricsPoller
-	reporter reporter.MetricsReporter
+	pollers  []MetricsPoller
+	reporter MetricsReporter
 	params   *MetricsCollectorParams
 }
 
 func NewMetricsCollector(
 	logger *slog.Logger,
 	service service.MetricsService,
-	pollers []poller.MetricsPoller,
-	reporter reporter.MetricsReporter,
+	pollers []MetricsPoller,
+	reporter MetricsReporter,
 	params *MetricsCollectorParams,
 ) *MetricsCollector {
 	return &MetricsCollector{
@@ -45,7 +51,7 @@ func NewMetricsCollector(
 
 func (m *MetricsCollector) Start() {
 	metricsToSave := make(chan *models.Metrics, 128)
-	metricsToRecord := make(chan *models.Metrics, 128)
+	metricsToRecord := make(chan []*models.Metrics, 64)
 
 	// poll
 	go func() {
@@ -85,9 +91,7 @@ func (m *MetricsCollector) Start() {
 				m.logger.Error("Error getting all accumulated metrics", "err", err)
 				continue
 			}
-			for _, metric := range accumulated {
-				metricsToRecord <- metric
-			}
+			metricsToRecord <- accumulated
 			err = m.service.DeleteAll(context.Background())
 			if err != nil {
 				slog.Error("Error deleting all metrics", "err", err)
@@ -98,8 +102,8 @@ func (m *MetricsCollector) Start() {
 	}()
 
 	go func() {
-		for metric := range metricsToRecord {
-			err := m.reporter.SendMetrics(metric)
+		for metricsBatch := range metricsToRecord {
+			err := m.reporter.SendMetrics(metricsBatch)
 			if err != nil {
 				m.logger.Error("Error sending metrics to reporter", "err", err)
 				continue

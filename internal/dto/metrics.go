@@ -15,3 +15,4 @@ type MetricsDto struct {
 type GetMetricsResponse MetricsDto
 
 type UpdateMetricsRequest MetricsDto
+type UpdateMetricsBatchRequest []MetricsDto

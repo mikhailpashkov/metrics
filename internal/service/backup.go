@@ -8,7 +8,6 @@ import (
 	"time"
 
 	models "github.com/mikhailpashkov/metrics/internal/model"
-	"github.com/mikhailpashkov/metrics/internal/repository"
 )
 
 type BackupService interface {
@@ -16,17 +15,22 @@ type BackupService interface {
 	SetupBackup(ctx context.Context, storeInterval int) error
 }
 
+type BackupRepository interface {
+	FindAll(ctx context.Context) ([]*models.BackupMetrics, error)
+	SaveAll(ctx context.Context, metrics []*models.BackupMetrics) error
+}
+
 type BackupServiceImpl struct {
 	logger           *slog.Logger
 	metricsService   MetricsService
-	backupRepository repository.BackupRepository
+	backupRepository BackupRepository
 	eventService     EventService
 }
 
 func NewBackupService(
 	logger *slog.Logger,
 	metricsService MetricsService,
-	backupRepository repository.BackupRepository,
+	backupRepository BackupRepository,
 	eventService EventService,
 ) *BackupServiceImpl {
 	return &BackupServiceImpl{
@@ -47,7 +51,7 @@ func (bs *BackupServiceImpl) Restore(ctx context.Context) error {
 	errs := make([]error, 0)
 	for _, bMetrics := range restoredMetrics {
 		toSave := &models.Metrics{
-			ID:    -1,
+			ID:    models.MetricsNewID,
 			Type:  bMetrics.Type,
 			Name:  bMetrics.ID,
 			Delta: bMetrics.Delta,

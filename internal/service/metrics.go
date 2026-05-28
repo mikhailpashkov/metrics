@@ -9,11 +9,11 @@ import (
 
 	"github.com/google/uuid"
 	models "github.com/mikhailpashkov/metrics/internal/model"
-	"github.com/mikhailpashkov/metrics/internal/repository"
 )
 
 type MetricsService interface {
 	UpdateMetrics(ctx context.Context, metricsModel *models.Metrics) (*models.Metrics, error)
+	UpdateMetricsBatch(ctx context.Context, metricsModels []*models.Metrics) error
 	UpdateCounter(ctx context.Context, name string, delta int64) (*models.Metrics, error)
 	UpdateGauge(ctx context.Context, name string, value float64) (*models.Metrics, error)
 	GetAllRecords(ctx context.Context) ([]*models.Metrics, error)
@@ -22,13 +22,23 @@ type MetricsService interface {
 	DeleteAll(ctx context.Context) error
 }
 
+type MetricsRepository interface {
+	FindById(ctx context.Context, id int64) (*models.Metrics, error)
+	FindByName(ctx context.Context, name string) ([]*models.Metrics, error)
+	FindAll(ctx context.Context) ([]*models.Metrics, error)
+	Save(ctx context.Context, metrics *models.Metrics) (*models.Metrics, error)
+	InsertBatch(ctx context.Context, metrics []*models.Metrics) error
+	DeleteAll(ctx context.Context) error
+	DeleteById(ctx context.Context, id int64) error
+}
+
 type MetricsServiceImpl struct {
 	logger            *slog.Logger
-	metricsRepository repository.MetricsRepository
+	metricsRepository MetricsRepository
 	eventService      EventService
 }
 
-func NewMetricsService(logger *slog.Logger, metricsRepository repository.MetricsRepository, eventService EventService) *MetricsServiceImpl {
+func NewMetricsService(logger *slog.Logger, metricsRepository MetricsRepository, eventService EventService) *MetricsServiceImpl {
 	return &MetricsServiceImpl{
 		logger:            logger,
 		metricsRepository: metricsRepository,
@@ -39,7 +49,7 @@ func NewMetricsService(logger *slog.Logger, metricsRepository repository.Metrics
 func (ms *MetricsServiceImpl) UpdateMetrics(ctx context.Context, metricsModel *models.Metrics) (*models.Metrics, error) {
 	savedMetrics, err := ms.metricsRepository.Save(ctx, metricsModel)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to UpdateMetrics: %w", err)
 	}
 
 	defer ms.eventService.Notify(&models.Event{ID: uuid.NewString(), Key: models.MetricsUpdatedEvent})
@@ -47,9 +57,20 @@ func (ms *MetricsServiceImpl) UpdateMetrics(ctx context.Context, metricsModel *m
 	return savedMetrics, nil
 }
 
+func (ms *MetricsServiceImpl) UpdateMetricsBatch(ctx context.Context, metricsModels []*models.Metrics) error {
+	err := ms.metricsRepository.InsertBatch(ctx, metricsModels)
+	if err != nil {
+		return fmt.Errorf("failed to UpdateMetricsBatch: %w", err)
+	}
+
+	defer ms.eventService.Notify(&models.Event{ID: uuid.NewString(), Key: models.MetricsUpdatedEvent})
+
+	return nil
+}
+
 func (ms *MetricsServiceImpl) UpdateCounter(ctx context.Context, name string, delta int64) (*models.Metrics, error) {
 	return ms.UpdateMetrics(ctx, &models.Metrics{
-		ID:    -1,
+		ID:    models.MetricsNewID,
 		Type:  models.Counter,
 		Name:  name,
 		Delta: &delta,
@@ -59,7 +80,7 @@ func (ms *MetricsServiceImpl) UpdateCounter(ctx context.Context, name string, de
 
 func (ms *MetricsServiceImpl) UpdateGauge(ctx context.Context, name string, value float64) (*models.Metrics, error) {
 	return ms.UpdateMetrics(ctx, &models.Metrics{
-		ID:    -1,
+		ID:    models.MetricsNewID,
 		Type:  models.Gauge,
 		Name:  name,
 		Value: &value,
@@ -110,7 +131,7 @@ func (ms *MetricsServiceImpl) GetAllAccumulated(ctx context.Context) ([]*models.
 				accumulatedDelta += *record.Delta
 			}
 			accumulatedMetric := &models.Metrics{
-				ID:    -1,
+				ID:    models.MetricsNewID,
 				Type:  models.Counter,
 				Name:  name,
 				Delta: &accumulatedDelta,

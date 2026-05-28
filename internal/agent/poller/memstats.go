@@ -54,7 +54,7 @@ func (m MemStatsPoller) metricsBuilderUnInt64(name string, value uint64) *models
 
 func (_ MemStatsPoller) metricsBuilderFloat64(name string, value float64) *models.Metrics {
 	return &models.Metrics{
-		ID:    -1,
+		ID:    models.MetricsNewID,
 		Type:  models.Gauge,
 		Name:  name,
 		Delta: nil,
