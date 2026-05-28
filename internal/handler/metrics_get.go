@@ -14,11 +14,6 @@ import (
 func NewGetMetricsHandlerFunc(logger *slog.Logger, metricsService service.MetricsService) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		if r.Method != http.MethodPost {
-			logger.Debug("Method not allowed")
-			http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
-			return
-		}
 
 		var request dto.GetMetricsRequest
 
