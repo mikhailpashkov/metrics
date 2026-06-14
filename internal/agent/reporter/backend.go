@@ -1,6 +1,7 @@
 package reporter
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"log/slog"
@@ -10,6 +11,7 @@ import (
 	"github.com/mikhailpashkov/metrics/internal/dto"
 	"github.com/mikhailpashkov/metrics/internal/mapper"
 	models "github.com/mikhailpashkov/metrics/internal/model"
+	"github.com/mikhailpashkov/metrics/internal/utils"
 	"resty.dev/v3"
 )
 
@@ -19,9 +21,35 @@ type BackendReporter struct {
 	logger  *slog.Logger
 }
 
-func NewBackendReporter(address string, logger *slog.Logger) *BackendReporter {
+type hashTransport struct {
+	Key  string
+	Base http.RoundTripper
+}
+
+func (t *hashTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	if req.Body != nil {
+		body, err := io.ReadAll(req.Body)
+		if err != nil {
+			return nil, err
+		}
+		req.Body = io.NopCloser(bytes.NewReader(body))
+		req.Header.Set(
+			utils.HashHeaderKey,
+			utils.Hash(body, []byte(t.Key)),
+		)
+	}
+	return t.Base.RoundTrip(req)
+}
+
+func NewBackendReporter(address string, key string, logger *slog.Logger) *BackendReporter {
 	client := resty.New()
 	client.SetTimeout(5 * time.Second)
+	if key != "" {
+		client.SetTransport(&hashTransport{
+			Key:  key,
+			Base: http.DefaultTransport,
+		})
+	}
 	return &BackendReporter{
 		address: address,
 		client:  client,
@@ -76,7 +104,7 @@ func (r *BackendReporter) SendMetrics(metrics []*models.Metrics) error {
 		return fmt.Errorf("update metrics failed: unexpected status %d: %s", resp.StatusCode(), string(body))
 	}
 
-	r.logger.Debug("update metrics successfully", "count", len(metricsDtos))
+	r.logger.Info("update metrics successfully", "count", len(metricsDtos))
 
 	return nil
 }

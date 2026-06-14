@@ -31,13 +31,13 @@ type loggingHandler struct {
 func (h *loggingHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	startTime := time.Now()
 
-	responseWriter := &fetchingInfoResponseWriter{
+	rw := &fetchingInfoResponseWriter{
 		ResponseWriter: w,
 		statusCode:     http.StatusOK, // логика с прописыванием 200 во внутренней реализации Write'а не сработает, поэтому по-дефолту ставим StatusOK
 		size:           0,
 	}
 
-	h.Handler.ServeHTTP(responseWriter, r)
+	h.Handler.ServeHTTP(rw, r)
 
 	duration := time.Since(startTime)
 
@@ -45,8 +45,8 @@ func (h *loggingHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		"url", r.URL.String(),
 		"method", r.Method,
 		"duration", duration,
-		"status", responseWriter.statusCode,
-		"size", responseWriter.size,
+		"status", rw.statusCode,
+		"size", rw.size,
 	)
 }
 

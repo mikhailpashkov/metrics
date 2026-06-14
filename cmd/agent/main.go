@@ -19,7 +19,7 @@ const (
 
 func main() {
 	opts := &slog.HandlerOptions{
-		Level: slog.LevelDebug,
+		Level: slog.LevelInfo,
 	}
 
 	logger := slog.New(slog.NewTextHandler(os.Stdout, opts))
@@ -29,6 +29,8 @@ func main() {
 	var pollInterval int
 	var reportInterval int
 	var reportToLog bool
+	var key string
+	var workersCnt int
 
 	utils.GetParams([]utils.Param{
 		&utils.StringParam{
@@ -59,6 +61,20 @@ func main() {
 			Default:       false,
 			ValueConsumer: func(v bool) { reportToLog = v },
 		},
+		&utils.StringParam{
+			EnvName:       "KEY",
+			FlagName:      "k",
+			FlagUsage:     "HMAC key",
+			Default:       "",
+			ValueConsumer: func(v string) { key = v },
+		},
+		&utils.IntParam{
+			EnvName:       "RATE_LIMIT",
+			FlagName:      "l",
+			FlagUsage:     "Workers count",
+			Default:       1,
+			ValueConsumer: func(v int) { workersCnt = v },
+		},
 	})
 
 	logger.Info("params",
@@ -66,6 +82,8 @@ func main() {
 		"pollInterval", pollInterval,
 		"reportInterval", reportInterval,
 		"reportToLog", reportToLog,
+		"len(key)", len(key), // dont log sensitive data
+		"workersCnt", workersCnt,
 	)
 
 	metricsRepository := repository.NewMetricsMemoryRepository()
@@ -76,12 +94,13 @@ func main() {
 	if reportToLog {
 		metricsReporter = reporter.NewLogReporter(logger.With(LoggerNameKey, "reporter.LogReporter"))
 	} else {
-		metricsReporter = reporter.NewBackendReporter(addr, logger.With(LoggerNameKey, "reporter.BackendReporter"))
+		metricsReporter = reporter.NewBackendReporter(addr, key, logger.With(LoggerNameKey, "reporter.BackendReporter"))
 	}
 
 	memStatsPoller := poller.NewMemStatsPoller()
 	pollCountPoller := poller.NewPollCountPoller()
 	randomValuePoller := poller.NewRandomValuePoller()
+	goPsUtilPoller := poller.NewGoPsUtilPoller()
 
 	metricsCollector := agent.NewMetricsCollector(
 		logger.With(LoggerNameKey, "agent.MetricsCollector"),
@@ -90,13 +109,15 @@ func main() {
 			memStatsPoller,
 			pollCountPoller,
 			randomValuePoller,
+			goPsUtilPoller,
 		},
 		metricsReporter,
 		&agent.MetricsCollectorParams{
-			PollInterval:   time.Duration(pollInterval) * time.Second,
-			ReportInterval: time.Duration(reportInterval) * time.Second,
-			PollCallback:   pollCountPoller.IncrementCount,
-			ReportCallback: pollCountPoller.ResetCount,
+			PollInterval:            time.Duration(pollInterval) * time.Second,
+			ReportInterval:          time.Duration(reportInterval) * time.Second,
+			PollDoneCallback:        func() { pollCountPoller.IncrementCount() },
+			ReportScheduledCallback: func() { pollCountPoller.ResetCount() },
+			WorkersCnt:              workersCnt,
 		},
 	)
 

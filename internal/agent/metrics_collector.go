@@ -4,6 +4,7 @@ import (
 	"context"
 	"log/slog"
 	"os"
+	"sync"
 	"time"
 
 	models "github.com/mikhailpashkov/metrics/internal/model"
@@ -19,10 +20,11 @@ type MetricsReporter interface {
 }
 
 type MetricsCollectorParams struct {
-	PollInterval   time.Duration
-	ReportInterval time.Duration
-	PollCallback   func()
-	ReportCallback func()
+	PollInterval            time.Duration
+	ReportInterval          time.Duration
+	PollDoneCallback        func()
+	ReportScheduledCallback func()
+	WorkersCnt              int
 }
 
 type MetricsCollector struct {
@@ -57,17 +59,23 @@ func (m *MetricsCollector) Start() {
 	go func() {
 		for {
 			time.Sleep(m.params.PollInterval)
-			go m.params.PollCallback()
+			wg := sync.WaitGroup{}
+			wg.Add(len(m.pollers))
 			for _, metricsPoller := range m.pollers {
-				metrics, err := metricsPoller.GetMetrics()
-				if err != nil {
-					m.logger.Error("Error polling metrics", "err", err)
-					continue
-				}
-				for _, metric := range metrics {
-					metricsToSave <- metric
-				}
+				go func() {
+					defer wg.Done()
+					metrics, err := metricsPoller.GetMetrics()
+					if err != nil {
+						m.logger.Error("Error polling metrics", "err", err)
+						return
+					}
+					for _, metric := range metrics {
+						metricsToSave <- metric
+					}
+				}()
 			}
+			wg.Wait()
+			go m.params.PollDoneCallback()
 		}
 	}()
 
@@ -97,19 +105,22 @@ func (m *MetricsCollector) Start() {
 				slog.Error("Error deleting all metrics", "err", err)
 				os.Exit(1)
 			}
-			go m.params.ReportCallback()
+			go m.params.ReportScheduledCallback()
 		}
 	}()
 
-	go func() {
-		for metricsBatch := range metricsToRecord {
-			err := m.reporter.SendMetrics(metricsBatch)
-			if err != nil {
-				m.logger.Error("Error sending metrics to reporter", "err", err)
-				continue
+	for w := 1; w <= m.params.WorkersCnt; w++ {
+		go func() {
+			for metricsBatch := range metricsToRecord {
+				m.logger.Info("Sending metrics to reporter", "workerId", w)
+				err := m.reporter.SendMetrics(metricsBatch)
+				if err != nil {
+					m.logger.Error("Error sending metrics to reporter", "err", err)
+					continue
+				}
 			}
-		}
-	}()
+		}()
+	}
 
 	for {
 		time.Sleep(1 * time.Second)
