@@ -88,17 +88,17 @@ func main() {
 		metricsReporter = reporter.NewBackendReporter(addr, key, logger.With(LoggerNameKey, "reporter.BackendReporter"))
 	}
 
-	//memStatsPoller := poller.NewMemStatsPoller()
+	memStatsPoller := poller.NewMemStatsPoller()
 	pollCountPoller := poller.NewPollCountPoller()
-	//randomValuePoller := poller.NewRandomValuePoller()
+	randomValuePoller := poller.NewRandomValuePoller()
 
 	metricsCollector := agent.NewMetricsCollector(
 		logger.With(LoggerNameKey, "agent.MetricsCollector"),
 		metricsService,
 		[]agent.MetricsPoller{
-			//memStatsPoller,
+			memStatsPoller,
 			pollCountPoller,
-			//randomValuePoller,
+			randomValuePoller,
 		},
 		metricsReporter,
 		&agent.MetricsCollectorParams{
