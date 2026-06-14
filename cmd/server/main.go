@@ -38,6 +38,7 @@ func main() {
 	var fileStoragePath string
 	var restore bool
 	var databaseDSN string
+	var key string
 
 	utils.GetParams([]utils.Param{
 		&utils.StringParam{
@@ -74,6 +75,13 @@ func main() {
 			FlagUsage:     "Database connection string",
 			Default:       "",
 			ValueConsumer: func(v string) { databaseDSN = v },
+		},
+		&utils.StringParam{
+			EnvName:       "KEY",
+			FlagName:      "k",
+			FlagUsage:     "HMAC key",
+			Default:       "",
+			ValueConsumer: func(v string) { key = v },
 		},
 	})
 
@@ -175,6 +183,10 @@ func main() {
 	// но в учебных целях используем самодельные
 	r.Use(middleware.WithLogging(logger.With(LoggerNameKey, "middleware.WithLogging")))
 	r.Use(middleware.WithGZIPSupport(logger.With(LoggerNameKey, "middleware.WithGZIPSupport")))
+	if key != "" {
+		r.Use(middleware.WithHASHCheck(logger.With(LoggerNameKey, "middleware.WithHASHCheck"), key))
+		r.Use(middleware.WithHASHWrite(logger.With(LoggerNameKey, "middleware.WithHASHWrite"), key))
+	}
 
 	// для фикса автотестов в iter7: там, зачем-то, в конце слеши приделали на клиенте
 	r.Use(chimiddleware.StripSlashes)

@@ -8,28 +8,9 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
-	"slices"
 )
 
 const hashHeaderKey = "HashSHA256"
-
-var supportedMethods = []string{http.MethodPost, http.MethodPut, http.MethodPatch}
-
-type hashHandler struct {
-	http.Handler
-	key    string
-	logger *slog.Logger
-}
-
-type hashResponseWriter struct {
-	http.ResponseWriter
-	body bytes.Buffer
-}
-
-func (w *hashResponseWriter) Write(b []byte) (int, error) {
-	w.body.Write(b)
-	return w.ResponseWriter.Write(b)
-}
 
 func hash(body []byte, key []byte) string {
 	h := hmac.New(sha256.New, key)
@@ -37,14 +18,37 @@ func hash(body []byte, key []byte) string {
 	return hex.EncodeToString(h.Sum(nil))
 }
 
-func (h *hashHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+type checkHashHandler struct {
+	http.Handler
+	key    string
+	logger *slog.Logger
+}
 
-	if !slices.Contains(supportedMethods, r.Method) {
-		h.logger.Debug("skip hash check: not supported method")
-		h.Handler.ServeHTTP(w, r)
-		return
-	}
+type writeHashHandler struct {
+	http.Handler
+	key    string
+	logger *slog.Logger
+}
 
+type hashResponseWriter struct {
+	header http.Header
+	body   bytes.Buffer
+	status int
+}
+
+func (w *hashResponseWriter) Header() http.Header {
+	return w.header
+}
+
+func (w *hashResponseWriter) Write(b []byte) (int, error) {
+	return w.body.Write(b)
+}
+
+func (w *hashResponseWriter) WriteHeader(status int) {
+	w.status = status
+}
+
+func (h *checkHashHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	gotHash := r.Header.Get(hashHeaderKey)
 	if gotHash == "" {
 		h.logger.Debug("skip hash check: empty hash header")
@@ -70,24 +74,52 @@ func (h *hashHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	h.Handler.ServeHTTP(w, r)
+}
+
+func (h *writeHashHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	rw := &hashResponseWriter{
-		ResponseWriter: w,
+		header: make(http.Header),
+		body:   bytes.Buffer{},
+		status: http.StatusOK,
 	}
 
 	h.Handler.ServeHTTP(rw, r)
 
 	responseBody := rw.body.Bytes()
+	calculatedHash := hash(responseBody, []byte(h.key))
 
-	w.Header().Set(
+	h.logger.Debug("calculated hash", "hash", calculatedHash)
+
+	rw.Header().Set(
 		hashHeaderKey,
-		hash(responseBody, []byte(h.key)),
+		calculatedHash,
 	)
+
+	for k, v := range rw.header {
+		w.Header()[k] = v
+	}
+
+	w.WriteHeader(rw.status)
+	_, e := w.Write(rw.body.Bytes())
+	if e != nil {
+		h.logger.Error("failed to write body", "err", e)
+	}
 }
 
-func WithHASH(logger *slog.Logger, key string) func(next http.Handler) http.Handler {
-
+func WithHASHCheck(logger *slog.Logger, key string) func(next http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
-		return &hashHandler{
+		return &checkHashHandler{
+			Handler: next,
+			key:     key,
+			logger:  logger,
+		}
+	}
+}
+
+func WithHASHWrite(logger *slog.Logger, key string) func(next http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return &writeHashHandler{
 			Handler: next,
 			key:     key,
 			logger:  logger,
