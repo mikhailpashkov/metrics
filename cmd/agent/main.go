@@ -100,6 +100,7 @@ func main() {
 	memStatsPoller := poller.NewMemStatsPoller()
 	pollCountPoller := poller.NewPollCountPoller()
 	randomValuePoller := poller.NewRandomValuePoller()
+	goPsUtilPoller := poller.NewGoPsUtilPoller()
 
 	metricsCollector := agent.NewMetricsCollector(
 		logger.With(LoggerNameKey, "agent.MetricsCollector"),
@@ -108,6 +109,7 @@ func main() {
 			memStatsPoller,
 			pollCountPoller,
 			randomValuePoller,
+			goPsUtilPoller,
 		},
 		metricsReporter,
 		&agent.MetricsCollectorParams{
