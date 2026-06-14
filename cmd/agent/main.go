@@ -29,6 +29,7 @@ func main() {
 	var pollInterval int
 	var reportInterval int
 	var reportToLog bool
+	var key string
 
 	utils.GetParams([]utils.Param{
 		&utils.StringParam{
@@ -59,6 +60,13 @@ func main() {
 			Default:       false,
 			ValueConsumer: func(v bool) { reportToLog = v },
 		},
+		&utils.StringParam{
+			EnvName:       "KEY",
+			FlagName:      "k",
+			FlagUsage:     "HMAC key",
+			Default:       "",
+			ValueConsumer: func(v string) { key = v },
+		},
 	})
 
 	logger.Info("params",
@@ -66,6 +74,7 @@ func main() {
 		"pollInterval", pollInterval,
 		"reportInterval", reportInterval,
 		"reportToLog", reportToLog,
+		"len(key)", len(key), // dont log sensitive data
 	)
 
 	metricsRepository := repository.NewMetricsMemoryRepository()
@@ -76,20 +85,20 @@ func main() {
 	if reportToLog {
 		metricsReporter = reporter.NewLogReporter(logger.With(LoggerNameKey, "reporter.LogReporter"))
 	} else {
-		metricsReporter = reporter.NewBackendReporter(addr, logger.With(LoggerNameKey, "reporter.BackendReporter"))
+		metricsReporter = reporter.NewBackendReporter(addr, key, logger.With(LoggerNameKey, "reporter.BackendReporter"))
 	}
 
-	memStatsPoller := poller.NewMemStatsPoller()
+	//memStatsPoller := poller.NewMemStatsPoller()
 	pollCountPoller := poller.NewPollCountPoller()
-	randomValuePoller := poller.NewRandomValuePoller()
+	//randomValuePoller := poller.NewRandomValuePoller()
 
 	metricsCollector := agent.NewMetricsCollector(
 		logger.With(LoggerNameKey, "agent.MetricsCollector"),
 		metricsService,
 		[]agent.MetricsPoller{
-			memStatsPoller,
+			//memStatsPoller,
 			pollCountPoller,
-			randomValuePoller,
+			//randomValuePoller,
 		},
 		metricsReporter,
 		&agent.MetricsCollectorParams{

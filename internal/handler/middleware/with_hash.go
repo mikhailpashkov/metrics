@@ -5,9 +5,12 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
+	"slices"
 
 	"github.com/mikhailpashkov/metrics/internal/utils"
 )
+
+var methodsForCheck = []string{http.MethodPost}
 
 type checkHashHandler struct {
 	http.Handler
@@ -40,10 +43,16 @@ func (w *hashResponseWriter) WriteHeader(status int) {
 }
 
 func (h *checkHashHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if !slices.Contains(methodsForCheck, r.Method) {
+		h.logger.Debug("skip hash check: whitelisted method", "method", r.Method)
+		h.Handler.ServeHTTP(w, r)
+		return
+	}
+
 	gotHash := r.Header.Get(utils.HashHeaderKey)
 	if gotHash == "" {
-		h.logger.Debug("skip hash check: empty hash header")
-		h.Handler.ServeHTTP(w, r)
+		h.logger.Warn("empty hash header")
+		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
 		return
 	}
 
@@ -60,7 +69,7 @@ func (h *checkHashHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	expectedHash := utils.Hash(body, []byte(h.key))
 
 	if !utils.HashEqual(gotHash, expectedHash) {
-		h.logger.Warn("hash mismatch")
+		h.logger.Warn("hash mismatch", "gotHash", gotHash, "expectedHash", expectedHash, "body", string(body))
 		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
 		return
 	}
