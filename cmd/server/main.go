@@ -207,7 +207,7 @@ func main() {
 
 	r.Group(func(r chi.Router) {
 		if key != "" {
-			r.Use(middleware.WithHASHCheck(logger.With(LoggerNameKey, "middleware.WithHASHCheck"), key))
+			//r.Use(middleware.WithHASHCheck(logger.With(LoggerNameKey, "middleware.WithHASHCheck"), key))
 		}
 		r.Post("/update", handler.NewUpdateMetricsHandlerFunc(
 			logger.With(LoggerNameKey, "handler.UpdateMetricsHandler"),
