@@ -185,7 +185,6 @@ func main() {
 	r.Use(middleware.WithLogging(logger.With(LoggerNameKey, "middleware.WithLogging")))
 	r.Use(middleware.WithGZIPSupport(logger.With(LoggerNameKey, "middleware.WithGZIPSupport")))
 	if key != "" {
-		r.Use(middleware.WithHASHCheck(logger.With(LoggerNameKey, "middleware.WithHASHCheck"), key))
 		r.Use(middleware.WithHASHWrite(logger.With(LoggerNameKey, "middleware.WithHASHWrite"), key))
 	}
 
@@ -206,18 +205,23 @@ func main() {
 		metricsService,
 	))
 
-	r.Post("/update", handler.NewUpdateMetricsHandlerFunc(
-		logger.With(LoggerNameKey, "handler.UpdateMetricsHandler"),
-		metricsService,
-	))
-	r.Post("/update/{type}/{name}/{value}", handler.NewUpdateMetricsPathParamsHandlerFunc(
-		logger.With(LoggerNameKey, "handler.UpdateMetricsPathParamsHandler"),
-		metricsService,
-	))
-	r.Post("/updates", handler.NewUpdateMetricsBatchHandlerFunc(
-		logger.With(LoggerNameKey, "handler.NewUpdateMetricsBatchHandler"),
-		metricsService,
-	))
+	r.Group(func(r chi.Router) {
+		if key != "" {
+			r.Use(middleware.WithHASHCheck(logger.With(LoggerNameKey, "middleware.WithHASHCheck"), key))
+		}
+		r.Post("/update", handler.NewUpdateMetricsHandlerFunc(
+			logger.With(LoggerNameKey, "handler.UpdateMetricsHandler"),
+			metricsService,
+		))
+		r.Post("/update/{type}/{name}/{value}", handler.NewUpdateMetricsPathParamsHandlerFunc(
+			logger.With(LoggerNameKey, "handler.UpdateMetricsPathParamsHandler"),
+			metricsService,
+		))
+		r.Post("/updates", handler.NewUpdateMetricsBatchHandlerFunc(
+			logger.With(LoggerNameKey, "handler.NewUpdateMetricsBatchHandler"),
+			metricsService,
+		))
+	})
 
 	if wantDB {
 		r.Get("/ping", handler.NewDBPingHandlerFunc(
