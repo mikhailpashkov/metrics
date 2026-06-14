@@ -5,50 +5,28 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
-	"slices"
 
 	"github.com/mikhailpashkov/metrics/internal/utils"
 )
 
-var methodsForCheck = []string{http.MethodPost}
-
+// checkHashHandler
 type checkHashHandler struct {
 	http.Handler
 	key    string
 	logger *slog.Logger
 }
 
-type writeHashHandler struct {
-	http.Handler
-	key    string
-	logger *slog.Logger
-}
-
-type hashResponseWriter struct {
-	header http.Header
-	body   bytes.Buffer
-	status int
-}
-
-func (w *hashResponseWriter) Header() http.Header {
-	return w.header
-}
-
-func (w *hashResponseWriter) Write(b []byte) (int, error) {
-	return w.body.Write(b)
-}
-
-func (w *hashResponseWriter) WriteHeader(status int) {
-	w.status = status
+func WithHashCheck(logger *slog.Logger, key string) func(next http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return &checkHashHandler{
+			Handler: next,
+			key:     key,
+			logger:  logger,
+		}
+	}
 }
 
 func (h *checkHashHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if !slices.Contains(methodsForCheck, r.Method) {
-		h.logger.Debug("skip hash check: whitelisted method", "method", r.Method)
-		h.Handler.ServeHTTP(w, r)
-		return
-	}
-
 	gotHash := r.Header.Get(utils.HashHeaderKey)
 	if gotHash == "" {
 		h.logger.Warn("empty hash header")
@@ -75,6 +53,42 @@ func (h *checkHashHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	h.Handler.ServeHTTP(w, r)
+}
+
+// hashResponseWriter
+type hashResponseWriter struct {
+	header http.Header
+	body   bytes.Buffer
+	status int
+}
+
+func (w *hashResponseWriter) Header() http.Header {
+	return w.header
+}
+
+func (w *hashResponseWriter) Write(b []byte) (int, error) {
+	return w.body.Write(b)
+}
+
+func (w *hashResponseWriter) WriteHeader(status int) {
+	w.status = status
+}
+
+// writeHashHandler
+type writeHashHandler struct {
+	http.Handler
+	key    string
+	logger *slog.Logger
+}
+
+func WithHashWrite(logger *slog.Logger, key string) func(next http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return &writeHashHandler{
+			Handler: next,
+			key:     key,
+			logger:  logger,
+		}
+	}
 }
 
 func (h *writeHashHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -104,25 +118,5 @@ func (h *writeHashHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	_, e := w.Write(rw.body.Bytes())
 	if e != nil {
 		h.logger.Error("failed to write body", "err", e)
-	}
-}
-
-func WithHASHCheck(logger *slog.Logger, key string) func(next http.Handler) http.Handler {
-	return func(next http.Handler) http.Handler {
-		return &checkHashHandler{
-			Handler: next,
-			key:     key,
-			logger:  logger,
-		}
-	}
-}
-
-func WithHASHWrite(logger *slog.Logger, key string) func(next http.Handler) http.Handler {
-	return func(next http.Handler) http.Handler {
-		return &writeHashHandler{
-			Handler: next,
-			key:     key,
-			logger:  logger,
-		}
 	}
 }

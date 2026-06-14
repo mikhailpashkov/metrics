@@ -185,7 +185,7 @@ func main() {
 	r.Use(middleware.WithLogging(logger.With(LoggerNameKey, "middleware.WithLogging")))
 	r.Use(middleware.WithGZIPSupport(logger.With(LoggerNameKey, "middleware.WithGZIPSupport")))
 	if key != "" {
-		r.Use(middleware.WithHASHWrite(logger.With(LoggerNameKey, "middleware.WithHASHWrite"), key))
+		r.Use(middleware.WithHashWrite(logger.With(LoggerNameKey, "middleware.WithHashWrite"), key))
 	}
 
 	// для фикса автотестов в iter7: там, зачем-то, в конце слеши приделали на клиенте
@@ -205,9 +205,11 @@ func main() {
 		metricsService,
 	))
 
+	// Group with hash check
 	r.Group(func(r chi.Router) {
 		if key != "" {
-			//r.Use(middleware.WithHASHCheck(logger.With(LoggerNameKey, "middleware.WithHASHCheck"), key))
+			// тесты на iter14 ничего не знают про необходимость передавать hash
+			//r.Use(middleware.WithHashCheck(logger.With(LoggerNameKey, "middleware.WithHashCheck"), key))
 		}
 		r.Post("/update", handler.NewUpdateMetricsHandlerFunc(
 			logger.With(LoggerNameKey, "handler.UpdateMetricsHandler"),
