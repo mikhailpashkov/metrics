@@ -2,7 +2,6 @@ package poller
 
 import (
 	"strconv"
-	"time"
 
 	models "github.com/mikhailpashkov/metrics/internal/model"
 	"github.com/shirou/gopsutil/v4/cpu"
@@ -20,7 +19,7 @@ func (p *GoPsUtilPoller) GetMetrics() ([]*models.Metrics, error) {
 		return nil, err
 	}
 
-	utilization, err := cpu.Percent(1*time.Second, true)
+	utilization, err := cpu.Percent(0, true)
 	if err != nil {
 		return nil, err
 	}
