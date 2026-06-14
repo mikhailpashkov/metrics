@@ -30,6 +30,7 @@ func main() {
 	var reportInterval int
 	var reportToLog bool
 	var key string
+	var workersCnt int
 
 	utils.GetParams([]utils.Param{
 		&utils.StringParam{
@@ -67,6 +68,13 @@ func main() {
 			Default:       "",
 			ValueConsumer: func(v string) { key = v },
 		},
+		&utils.IntParam{
+			EnvName:       "RATE_LIMIT",
+			FlagName:      "l",
+			FlagUsage:     "Workers count",
+			Default:       1,
+			ValueConsumer: func(v int) { workersCnt = v },
+		},
 	})
 
 	logger.Info("params",
@@ -75,6 +83,7 @@ func main() {
 		"reportInterval", reportInterval,
 		"reportToLog", reportToLog,
 		"len(key)", len(key), // dont log sensitive data
+		"workersCnt", workersCnt,
 	)
 
 	metricsRepository := repository.NewMetricsMemoryRepository()
@@ -106,6 +115,7 @@ func main() {
 			ReportInterval: time.Duration(reportInterval) * time.Second,
 			PollCallback:   pollCountPoller.IncrementCount,
 			ReportCallback: pollCountPoller.ResetCount,
+			WorkersCnt:     workersCnt,
 		},
 	)
 

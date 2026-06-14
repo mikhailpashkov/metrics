@@ -23,6 +23,7 @@ type MetricsCollectorParams struct {
 	ReportInterval time.Duration
 	PollCallback   func()
 	ReportCallback func()
+	WorkersCnt     int
 }
 
 type MetricsCollector struct {
@@ -101,15 +102,18 @@ func (m *MetricsCollector) Start() {
 		}
 	}()
 
-	go func() {
-		for metricsBatch := range metricsToRecord {
-			err := m.reporter.SendMetrics(metricsBatch)
-			if err != nil {
-				m.logger.Error("Error sending metrics to reporter", "err", err)
-				continue
+	for w := 1; w <= m.params.WorkersCnt; w++ {
+		go func() {
+			for metricsBatch := range metricsToRecord {
+				m.logger.Debug("Sending metrics to reporter", "workerId", w)
+				err := m.reporter.SendMetrics(metricsBatch)
+				if err != nil {
+					m.logger.Error("Error sending metrics to reporter", "err", err)
+					continue
+				}
 			}
-		}
-	}()
+		}()
+	}
 
 	for {
 		time.Sleep(1 * time.Second)
