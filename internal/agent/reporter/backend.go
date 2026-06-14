@@ -104,7 +104,7 @@ func (r *BackendReporter) SendMetrics(metrics []*models.Metrics) error {
 		return fmt.Errorf("update metrics failed: unexpected status %d: %s", resp.StatusCode(), string(body))
 	}
 
-	r.logger.Debug("update metrics successfully", "count", len(metricsDtos))
+	r.logger.Info("update metrics successfully", "count", len(metricsDtos))
 
 	return nil
 }

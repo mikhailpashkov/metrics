@@ -19,7 +19,7 @@ const (
 
 func main() {
 	opts := &slog.HandlerOptions{
-		Level: slog.LevelDebug,
+		Level: slog.LevelInfo,
 	}
 
 	logger := slog.New(slog.NewTextHandler(os.Stdout, opts))
@@ -113,11 +113,11 @@ func main() {
 		},
 		metricsReporter,
 		&agent.MetricsCollectorParams{
-			PollInterval:   time.Duration(pollInterval) * time.Second,
-			ReportInterval: time.Duration(reportInterval) * time.Second,
-			PollCallback:   pollCountPoller.IncrementCount,
-			ReportCallback: pollCountPoller.ResetCount,
-			WorkersCnt:     workersCnt,
+			PollInterval:            time.Duration(pollInterval) * time.Second,
+			ReportInterval:          time.Duration(reportInterval) * time.Second,
+			PollDoneCallback:        func() { pollCountPoller.IncrementCount() },
+			ReportScheduledCallback: func() { pollCountPoller.ResetCount() },
+			WorkersCnt:              workersCnt,
 		},
 	)
 
