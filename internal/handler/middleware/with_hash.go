@@ -2,21 +2,12 @@ package middleware
 
 import (
 	"bytes"
-	"crypto/hmac"
-	"crypto/sha256"
-	"encoding/hex"
 	"io"
 	"log/slog"
 	"net/http"
+
+	"github.com/mikhailpashkov/metrics/internal/utils"
 )
-
-const hashHeaderKey = "HashSHA256"
-
-func hash(body []byte, key []byte) string {
-	h := hmac.New(sha256.New, key)
-	h.Write(body)
-	return hex.EncodeToString(h.Sum(nil))
-}
 
 type checkHashHandler struct {
 	http.Handler
@@ -49,7 +40,7 @@ func (w *hashResponseWriter) WriteHeader(status int) {
 }
 
 func (h *checkHashHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	gotHash := r.Header.Get(hashHeaderKey)
+	gotHash := r.Header.Get(utils.HashHeaderKey)
 	if gotHash == "" {
 		h.logger.Debug("skip hash check: empty hash header")
 		h.Handler.ServeHTTP(w, r)
@@ -66,9 +57,9 @@ func (h *checkHashHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	r.Body = io.NopCloser(bytes.NewBuffer(body))
 
-	expectedHash := hash(body, []byte(h.key))
+	expectedHash := utils.Hash(body, []byte(h.key))
 
-	if !hmac.Equal([]byte(gotHash), []byte(expectedHash)) {
+	if !utils.HashEqual(gotHash, expectedHash) {
 		h.logger.Warn("hash mismatch")
 		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
 		return
@@ -87,12 +78,12 @@ func (h *writeHashHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	h.Handler.ServeHTTP(rw, r)
 
 	responseBody := rw.body.Bytes()
-	calculatedHash := hash(responseBody, []byte(h.key))
+	calculatedHash := utils.Hash(responseBody, []byte(h.key))
 
 	h.logger.Debug("calculated hash", "hash", calculatedHash)
 
 	rw.Header().Set(
-		hashHeaderKey,
+		utils.HashHeaderKey,
 		calculatedHash,
 	)
 
