@@ -183,7 +183,7 @@ func main() {
 	// наверняка, хорошей идеей будет использовать github.com/go-chi/chi/v5/middleware,
 	// но в учебных целях используем самодельные
 	r.Use(middleware.WithLogging(logger.With(LoggerNameKey, "middleware.WithLogging")))
-	//r.Use(middleware.WithGZIPSupport(logger.With(LoggerNameKey, "middleware.WithGZIPSupport")))
+	r.Use(middleware.WithGZIPSupport(logger.With(LoggerNameKey, "middleware.WithGZIPSupport")))
 	if key != "" {
 		r.Use(middleware.WithHASHCheck(logger.With(LoggerNameKey, "middleware.WithHASHCheck"), key))
 		r.Use(middleware.WithHASHWrite(logger.With(LoggerNameKey, "middleware.WithHASHWrite"), key))
